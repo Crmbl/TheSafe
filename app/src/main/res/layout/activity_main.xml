@@ -41,16 +41,16 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:padding="25dp">
 
             <android.support.design.widget.FloatingActionButton
-                android:id="@+id/fab"
+                android:id="@+id/b"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="end|bottom"
+                android:layout_gravity="center|bottom"
                 android:layout_margin="16dp"
-                android:src="@drawable/ic_done_white_24dp" />
+                android:src="@drawable/ic_fingerprint_white_48dp" />
 
             <!--<Button-->
             <!--android:id="@+id/resetBtn"-->
