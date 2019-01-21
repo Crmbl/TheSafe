@@ -2,11 +2,14 @@ package com.crmbl.thesafe
 
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.support.design.widget.FloatingActionButton
 import android.util.Base64
-import android.widget.Button
+import android.util.Log
+import java.io.InputStream
 import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
 import javax.crypto.spec.IvParameterSpec
+import kotlin.experimental.and
 
 
 class MainActivity : AppCompatActivity() {
@@ -20,18 +23,22 @@ class MainActivity : AppCompatActivity() {
 //        val resetBtn = findViewById<Button>(R.id.resetBtn)
 //        val submitBtn = findViewById<Button>(R.id.submitBtn)
 //
-        val fingerButton = findViewById<Button>(R.id.fingerButton)
+        val fingerButton = findViewById<FloatingActionButton>(R.id.fingerButton)
         fingerButton.setOnClickListener {
 
-            var test = assets.open("docd.qsp").readBytes()
-            val key = "99aXHaxXC76qsWUa".toByteArray()
-            val salt = "DJsW3hb95dqG3uQg".toByteArray()
+            var ins: InputStream = assets.open("docd.qsp")
+            var content : ByteArray = ins.readBytes()
+            ins.close()
+
+            var byteArray : Array<UByte> = Array(content.size) { i: Int -> content[i].toUByte() }
+            val key = "3BVEnYwzN8eNTG8G".toByteArray()
+            val salt = "EsyQJ7keJK2nkVJ8".toByteArray()
             try {
                 val iv = IvParameterSpec(salt)
-                val keySpec = SecretKeySpec(key, "AES")
+                val keySpec = SecretKeySpec(key, "SHA1PRNG")
                 val cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING")
                 cipher.init(Cipher.DECRYPT_MODE, keySpec, iv)
-                val original = cipher.doFinal(Base64.decode(test, test.size))
+                val original = cipher.doFinal(Base64.decode(byteArray as ByteArray, byteArray.size))
 
             } catch (ex: Exception) {
                 ex.printStackTrace()
