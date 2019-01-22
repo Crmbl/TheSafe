@@ -28,7 +28,7 @@ class MainActivity : AppCompatActivity() {
             var password = PasswordDeriveBytes(passPhrase, salt, "SHA1", 2)
             var pass32 : ByteArray = password.GetBytes(32)
             var pass16 : ByteArray = password.GetBytes(16)
-²
+
             try {
                 val cipher = Cipher.getInstance("AES/CBC/NoPadding ")
                 cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(pass32, "SHA1PRNG"), IvParameterSpec(pass16))
