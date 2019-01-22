@@ -13,13 +13,13 @@
             android:background="#444444"
             android:padding="25dp"
             android:orientation="vertical">
-        <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="25dp"
-                android:textColor="#6dffbf"
-                android:padding="30dp"
-                android:text="Login"/>
+        <!--<TextView-->
+                <!--android:layout_width="wrap_content"-->
+                <!--android:layout_height="wrap_content"-->
+                <!--android:textSize="25dp"-->
+                <!--android:textColor="#6dffbf"-->
+                <!--android:padding="30dp"-->
+                <!--android:text="Login"/>-->
         <!--<EditText-->
                 <!--android:id="@+id/userNameTxt"-->
                 <!--android:hint="User Name"-->
