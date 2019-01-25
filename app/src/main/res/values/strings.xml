@@ -5,4 +5,5 @@
     <string name="login_button_send">Go</string>
     <string name="login_field_username">Username</string>
     <string name="login_field_password">Password</string>
+    <string name="login_button_text">username/login</string>
 </resources>
