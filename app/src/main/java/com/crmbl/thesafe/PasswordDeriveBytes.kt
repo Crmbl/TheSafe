@@ -129,7 +129,7 @@ class PasswordDeriveBytes {
         }
 
         while (cpos < cb) {
-            var output2: ByteArray? = null
+            var output2: ByteArray?
             if (hashnumber == 0) {
                 // last iteration on output
                 output2 = hash!!.digest(output)
