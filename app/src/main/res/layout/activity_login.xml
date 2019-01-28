@@ -15,13 +15,15 @@
             android:layout_width="match_parent"
             android:layout_height="450dp">
     </LinearLayout>
+
     <LinearLayout
             android:id="@+id/buttons_layout"
             android:layout_below="@+id/logo_layout"
-            android:padding="20dp"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="43dp"
             android:orientation="vertical"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="match_parent">
 
         <com.google.android.material.button.MaterialButton
                 android:id="@+id/login_button_text"
@@ -40,13 +42,10 @@
                 app:icon="@drawable/ic_fingerprint_white_24dp"
                 android:text="@string/login_button_fingerprint"/>
     </LinearLayout>
-
     <com.google.android.material.card.MaterialCardView
             android:id="@+id/login_card_password"
             android:layout_alignTop="@id/buttons_layout"
             android:layout_marginHorizontal="20dp"
-            android:paddingHorizontal="20dp"
-            android:paddingVertical="10dp"
             android:visibility="invisible"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -66,9 +65,12 @@
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
                     app:boxStrokeColor="@color/colorAccent"
                     android:hint="@string/login_field_username">
+
                 <com.google.android.material.textfield.TextInputEditText
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"/>
+                        android:layout_height="wrap_content"
+                        android:maxLines="1"
+                        android:inputType="text"/>
                 <!--android:text="@{viewModel.username}"-->
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -80,10 +82,12 @@
                     app:boxStrokeColor="@color/mtrl_box_stroke_color"
                     app:passwordToggleEnabled="true"
                     android:hint="@string/login_field_password">
+
                 <com.google.android.material.textfield.TextInputEditText
                         android:inputType="textPassword"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"/>
+                        android:layout_height="wrap_content"
+                        android:maxLines="1"/>
                 <!--android:text="@{viewModel.password}"-->
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -107,9 +111,41 @@
                         android:layout_margin="5dp"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="0.1"
                         android:text="@string/login_button_cancel"/>
             </LinearLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+    <com.google.android.material.card.MaterialCardView
+            android:id="@+id/login_card_fingerprint"
+            android:layout_alignTop="@id/buttons_layout"
+            android:layout_marginHorizontal="20dp"
+            android:visibility="invisible"
+            android:layout_width="match_parent"
+            android:layout_height="195dp"
+            app:cardCornerRadius="5dp"
+            app:cardElevation="2dp">
+
+        <LinearLayout
+                android:padding="5dp"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+            <ImageView
+                    android:layout_gravity="center"
+                    android:layout_width="wrap_content"
+                    android:layout_weight="0.9"
+                    android:layout_height="wrap_content"
+                    android:src="@drawable/ic_fingerprint_white_48dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                    android:id="@+id/login_button_cancel_fingerprint"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_margin="5dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end|bottom"
+                    android:text="@string/login_button_cancel"/>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 </RelativeLayout>
