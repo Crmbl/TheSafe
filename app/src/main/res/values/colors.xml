@@ -3,5 +3,5 @@
     <color name="colorPrimary">#55E6C1</color>
     <color name="colorPrimaryDark">#6c5ce7</color>
     <color name="colorAccent">#ee5253</color>
-    <color name="mtrl_textinput_default_box_stroke_color">#6c5ce7</color>
+    <color name="mtrl_textinput_default_box_stroke_color">#bbbb</color>
 </resources>

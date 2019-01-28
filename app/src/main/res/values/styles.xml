@@ -8,7 +8,7 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
-    <style  name="ActivityNoTitle" parent="AppTheme">
+    <style name="ActivityNoTitle" parent="AppTheme">
         <item name="android:windowNoTitle">true</item>
     </style>
 </resources>

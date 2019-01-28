@@ -63,7 +63,7 @@
                     android:layout_height="wrap_content"
                     android:layout_margin="5dp"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
-                    app:boxStrokeColor="@color/colorAccent"
+                    app:boxStrokeColor="@color/mtrl_box_stroke_color"
                     android:hint="@string/login_field_username">
 
                 <com.google.android.material.textfield.TextInputEditText
