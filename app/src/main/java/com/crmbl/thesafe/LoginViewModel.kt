@@ -5,7 +5,7 @@ import androidx.databinding.Bindable
 
 data class LoginViewModel(
     private var _username: String,
-    private var _password: String,
+    private var _password: String = "",
     private var _isUsingFingerprint: Boolean = false
 ) : BaseObservable() {
 
