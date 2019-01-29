@@ -1,9 +1,34 @@
 package com.crmbl.thesafe
 
-import androidx.lifecycle.ViewModel
+import androidx.databinding.BaseObservable
+import androidx.databinding.Bindable
 
-class LoginViewModel : ViewModel() {
-    lateinit var username : String
+data class LoginViewModel(
+    private var _username: String,
+    private var _password: String,
+    private var _isUsingFingerprint: Boolean = false
+) : BaseObservable() {
 
-    lateinit var password : String
+    var username: String
+    @Bindable get() = _username
+    set(value) {
+        _username = value
+        notifyPropertyChanged(BR.username)
+    }
+
+    var password: String
+    @Bindable get() = _password
+    set(value) {
+        _password = value
+        notifyPropertyChanged(BR.password)
+    }
+
+    var isUsingFingerprint: Boolean
+    @Bindable get() = _isUsingFingerprint
+    set(value) {
+        _isUsingFingerprint = value
+        notifyPropertyChanged(BR.usingFingerprint)
+    }
+
+
 }

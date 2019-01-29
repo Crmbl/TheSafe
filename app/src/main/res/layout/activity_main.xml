@@ -50,7 +50,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center|bottom"
                 android:layout_margin="16dp"
-                android:src="@drawable/ic_fingerprint_white_48dp" />
+                android:src="@drawable/ic_fingerprint_white_24dp" />
 
             <!--<Button-->
             <!--android:id="@+id/resetBtn"-->
