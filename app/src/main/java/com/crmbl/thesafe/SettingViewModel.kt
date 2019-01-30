@@ -1,0 +1,57 @@
+package com.crmbl.thesafe
+
+import android.view.View
+import androidx.databinding.BaseObservable
+import androidx.databinding.Bindable
+
+data class SettingViewModel(
+    private var _rememberUsername: Boolean = false,
+    private var _useFingerprint: Boolean = false,
+    private var _username: String = "",
+    private var _salt: String = "",
+    private var _password: String = "",
+    private var _firstUse: Boolean = true
+) : BaseObservable() {
+
+    var settingRememberUsername : Boolean
+    @Bindable get() = _rememberUsername
+    set(value) {
+        _rememberUsername = value
+        notifyPropertyChanged(BR.settingRememberUsername)
+    }
+
+    var settingUseFingerprint : Boolean
+    @Bindable get() = _useFingerprint
+    set(value) {
+        _useFingerprint = value
+        notifyPropertyChanged(BR.settingUseFingerprint)
+    }
+
+    var firstUse : Boolean
+    @Bindable get() = _firstUse
+    set(value) {
+        _firstUse = value
+        notifyPropertyChanged(BR.firstUse)
+    }
+
+    var settingUsername : String
+    @Bindable get() = _username
+    set(value) {
+        _username = value
+        notifyPropertyChanged(BR.settingUsername)
+    }
+
+    var settingSalt : String
+    @Bindable get() = _salt
+    set(value) {
+        _salt = value
+        notifyPropertyChanged(BR.settingSalt)
+    }
+
+    var settingPassword : String
+    @Bindable get() = _password
+    set(value) {
+        _password = value
+        notifyPropertyChanged(BR.settingPassword)
+    }
+}

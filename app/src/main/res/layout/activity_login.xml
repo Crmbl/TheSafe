@@ -22,7 +22,7 @@
         </LinearLayout>
 
         <LinearLayout android:id="@+id/buttons_layout"
-                android:layout_below="@+id/logo_layout"
+                android:layout_below="@id/logo_layout"
                 android:paddingHorizontal="20dp"
                 android:paddingVertical="43dp"
                 android:orientation="vertical"

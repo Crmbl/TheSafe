@@ -1,6 +1,5 @@
 package com.crmbl.thesafe
 
-import android.hardware.fingerprint.FingerprintManager
 import android.os.Bundle
 import android.view.View
 import android.view.animation.AccelerateInterpolator
@@ -13,6 +12,9 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import java.math.BigInteger
 import java.security.MessageDigest
+import android.content.Intent
+
+
 
 class LoginActivity : AppCompatActivity() {
 
@@ -38,12 +40,10 @@ class LoginActivity : AppCompatActivity() {
         if (rememberUsername)
             binding?.viewModel = LoginViewModel(prefs?.username!!)
         else
-            binding?.viewModel = LoginViewModel("")
+            binding?.viewModel = LoginViewModel("anus", "kipu")
 
         if (useFingerprint) {
-            // Fingerprint Manager
-            var fingerprintManager : FingerprintManager = getSystemService(FINGERPRINT_SERVICE) as FingerprintManager
-
+            //var fingerprintManager : FingerprintManager = getSystemService(FINGERPRINT_SERVICE) as FingerprintManager
         }
 
         loginCard = findViewById(R.id.login_card)
@@ -91,6 +91,16 @@ class LoginActivity : AppCompatActivity() {
             override fun onAnimationRepeat(p0: Animation?) {}
             override fun onAnimationEnd(p0: Animation?) {
                 loginCard?.visibility = View.INVISIBLE
+
+                if (prefs?.firstLogin!!) {
+                    startActivity(Intent(this@LoginActivity, SettingActivity::class.java))
+                    finish()
+                }
+                else {
+                    //TODO call main activity
+                    //startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                    //finish()
+                }
             }
             override fun onAnimationStart(p0: Animation?) {}
         })
@@ -117,7 +127,8 @@ class LoginActivity : AppCompatActivity() {
             loginCard?.startAnimation(shake)
         }
 
-//        if (prefs?.usernameHash == username?.md5() && prefs?.passwordHash == password?.md5()) {
+        //TODO remove bypass security
+        //if (prefs?.usernameHash == username?.md5() && prefs?.passwordHash == password?.md5()) {
         if ("anus" == username && "kipu" == password) {
             loginCard?.startAnimation(slideCeiling)
         }

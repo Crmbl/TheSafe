@@ -5,12 +5,15 @@ import android.content.SharedPreferences
 
 class Prefs (context: Context) {
     private val PREFS_FILENAME = "com.crmbl.thesafe.prefs"
-    private val PASSWORD_HASH = "password"
+    private val PASSWORD_HASH = "password_hash"
     private val USERNAME_HASH = "username_hash"
     private val USERNAME = "username"
-    private val SALT = "salt"
+    private val SALT_HASH_DECRYPT = "salt_hash_decrypt"
+    private val PASSWORD_HASH_DECRYPT = "password_hash_decrypt"
     private val USE_FINGERPRINT = "use_fingerprint"
     private val REMEMBER_USERNAME = "remember_username"
+    private val IS_FIRST_LOGIN = "first_login"
+
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_FILENAME, 0)
 
     var usernameHash: String
@@ -25,9 +28,13 @@ class Prefs (context: Context) {
         get() = prefs.getString(USERNAME, "")
         set(value) = prefs.edit().putString(USERNAME, value).apply()
 
-    var salt: String
-        get() = prefs.getString(SALT, "")
-        set(value) = prefs.edit().putString(SALT, value).apply()
+    var saltDecryptHash: String
+        get() = prefs.getString(SALT_HASH_DECRYPT, "")
+        set(value) = prefs.edit().putString(SALT_HASH_DECRYPT, value).apply()
+
+    var passwordDecryptHash: String
+        get() = prefs.getString(PASSWORD_HASH_DECRYPT, "")
+        set(value) = prefs.edit().putString(PASSWORD_HASH_DECRYPT, value).apply()
 
     var useFingerprint : Boolean
         get() = prefs.getBoolean(USE_FINGERPRINT, false)
@@ -36,4 +43,8 @@ class Prefs (context: Context) {
     var rememberUsername: Boolean
         get() = prefs.getBoolean(REMEMBER_USERNAME, false)
         set(value) = prefs.edit().putBoolean(REMEMBER_USERNAME, value).apply()
+
+    var firstLogin : Boolean
+        get() = prefs.getBoolean(IS_FIRST_LOGIN, true)
+        set(value) = prefs.edit().putBoolean(IS_FIRST_LOGIN, value).apply()
 }
