@@ -1,13 +1,11 @@
 package com.crmbl.thesafe
 
-import android.view.View
 import androidx.databinding.BaseObservable
 import androidx.databinding.Bindable
 
 data class SettingViewModel(
     private var _rememberUsername: Boolean = false,
     private var _useFingerprint: Boolean = false,
-    private var _username: String = "",
     private var _salt: String = "",
     private var _password: String = "",
     private var _firstUse: Boolean = true
@@ -32,13 +30,6 @@ data class SettingViewModel(
     set(value) {
         _firstUse = value
         notifyPropertyChanged(BR.firstUse)
-    }
-
-    var settingUsername : String
-    @Bindable get() = _username
-    set(value) {
-        _username = value
-        notifyPropertyChanged(BR.settingUsername)
     }
 
     var settingSalt : String

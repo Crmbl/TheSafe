@@ -11,9 +11,9 @@
     <string name="setting_field_salt">Salt</string>
     <string name="setting_field_title">Settings</string>
     <string name="setting_field_password">Password</string>
-    <string name="setting_helper_salt">Used for decryption</string>
-    <string name="setting_helper_password">Used for decryption</string>
-    <string name="setting_switch_fingerprint">Use fingerprint</string>
-    <string name="setting_switch_remember">Remember username</string>
+    <string name="setting_helper_salt">Used for decryption *</string>
+    <string name="setting_helper_password">Used for decryption *</string>
+    <string name="setting_switch_fingerprint">Use fingerprint to authenticate</string>
+    <string name="setting_switch_remember">Remember the username</string>
     <string name="setting_button_save">save</string>
 </resources>

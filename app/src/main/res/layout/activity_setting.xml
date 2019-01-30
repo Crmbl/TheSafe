@@ -21,48 +21,60 @@
                 android:layout_margin="5dp"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
                 app:boxStrokeColor="@color/mtrl_box_stroke_color"
-                android:textColorHint="@color/colorHint"
+                android:textColorHint="@color/colorHintAccent"
                 app:helperTextEnabled="true"
+                app:passwordToggleEnabled="true"
                 app:helperText="@string/setting_helper_password"
                 android:hint="@string/setting_field_password">
 
             <com.google.android.material.textfield.TextInputEditText
+                    android:inputType="textPassword"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:maxLines="1"
-                    android:inputType="text"
                     android:text="@={viewModel.settingPassword}"/>
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
+        <com.google.android.material.textfield.TextInputLayout android:id="@+id/decryp_salt_field"
                 android:layout_below="@id/decryp_password_field"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_margin="5dp"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
                 app:boxStrokeColor="@color/mtrl_box_stroke_color"
-                android:textColorHint="@color/colorHint"
+                android:textColorHint="@color/colorHintAccent"
                 app:helperTextEnabled="true"
+                app:passwordToggleEnabled="true"
                 app:helperText="@string/setting_helper_salt"
                 android:hint="@string/setting_field_salt">
 
             <com.google.android.material.textfield.TextInputEditText
+                    android:inputType="textPassword"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:maxLines="1"
-                    android:inputType="text"
                     android:text="@={viewModel.settingSalt}"/>
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!--<com.google.android.material.switchmaterial.SwitchMaterial-->
-                <!--android:layout_width="match_parent"-->
-                <!--android:layout_height="match_parent"-->
-                <!--android:text="@string/setting_switch_fingerprint"/>-->
+        <Switch android:id="@+id/switch_rememberUser"
+                android:layout_below="@id/decryp_salt_field"
+                android:text="@string/setting_switch_remember"
+                android:textColor="@color/colorHintAccent"
+                android:checked="@={viewModel.settingRememberUsername}"
+                android:layout_height="0dp"
+                android:layout_marginHorizontal="10dp"
+                android:layout_marginBottom="10dp"
+                android:layout_marginTop="30dp"
+                android:layout_width="match_parent" />
 
-        <!--<com.google.android.material.switchmaterial.SwitchMaterial-->
-                <!--android:layout_width="match_parent"-->
-                <!--android:layout_height="match_parent"-->
-                <!--android:text="@string/setting_switch_remember"/>-->
+        <Switch android:id="@+id/switch_fingerprint"
+                android:layout_below="@id/switch_rememberUser"
+                android:text="@string/setting_switch_fingerprint"
+                android:textColor="@color/colorHintAccent"
+                android:checked="@={viewModel.settingUseFingerprint}"
+                android:layout_height="0dp"
+                android:layout_margin="10dp"
+                android:layout_width="match_parent" />
 
         <LinearLayout android:id="@+id/setting_buttons_layout"
                 android:layout_alignParentBottom="true"

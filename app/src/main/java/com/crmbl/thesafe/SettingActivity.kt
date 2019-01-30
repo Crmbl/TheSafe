@@ -25,7 +25,6 @@ class SettingActivity : AppCompatActivity() {
             binding?.viewModel = SettingViewModel(
                 prefs?.rememberUsername!!,
                 prefs?.useFingerprint!!,
-                prefs?.username!!,
                 prefs?.saltDecryptHash!!,
                 prefs?.passwordDecryptHash!!,
                 prefs?.firstLogin!!)
@@ -40,9 +39,14 @@ class SettingActivity : AppCompatActivity() {
     private fun save() {
         // TODO check if every fields are set
         // update values in Prefs
+
+
+        //intent.getStringExtra("username")
     }
 
     private fun cancel() {
         // TODO Just cancel and get back on MainActivity
     }
+
+
 }

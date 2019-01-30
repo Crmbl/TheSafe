@@ -10,10 +10,8 @@ import androidx.databinding.DataBindingUtil
 import com.crmbl.thesafe.databinding.ActivityLoginBinding
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
-import java.math.BigInteger
-import java.security.MessageDigest
 import android.content.Intent
-
+import com.crmbl.thesafe.StringUtil
 
 
 class LoginActivity : AppCompatActivity() {
@@ -93,7 +91,9 @@ class LoginActivity : AppCompatActivity() {
                 loginCard?.visibility = View.INVISIBLE
 
                 if (prefs?.firstLogin!!) {
-                    startActivity(Intent(this@LoginActivity, SettingActivity::class.java))
+                    var intent = Intent(this@LoginActivity, SettingActivity::class.java)
+                    intent.putExtra("username", binding?.viewModel?.username)
+                    startActivity(intent)
                     finish()
                 }
                 else {
@@ -128,17 +128,12 @@ class LoginActivity : AppCompatActivity() {
         }
 
         //TODO remove bypass security
-        //if (prefs?.usernameHash == username?.md5() && prefs?.passwordHash == password?.md5()) {
+//        if (prefs?.usernameHash == StringUtil().md5(username!!) && prefs?.passwordHash == StringUtil().md5(password!!)) {
         if ("anus" == username && "kipu" == password) {
             loginCard?.startAnimation(slideCeiling)
         }
         else { // Error handling
             loginCard?.startAnimation(shake)
         }
-    }
-
-    private fun String.md5(): String {
-        val md = MessageDigest.getInstance("MD5")
-        return BigInteger(1, md.digest(toByteArray())).toString(16).padStart(32, '0')
     }
 }
