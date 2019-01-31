@@ -16,4 +16,5 @@
     <string name="setting_switch_fingerprint">Use fingerprint to authenticate</string>
     <string name="setting_switch_remember">Remember the username</string>
     <string name="setting_button_save">save</string>
+    <string name="setting_error_message">please, fill the fields with a *</string>
 </resources>

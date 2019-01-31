@@ -77,28 +77,44 @@
                 android:layout_width="match_parent" />
 
         <LinearLayout android:id="@+id/setting_buttons_layout"
-                android:layout_alignParentBottom="true"
-                android:orientation="horizontal"
-                android:layout_gravity="bottom|end"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
+                android:orientation="vertical"
+                android:layout_gravity="bottom|end">
 
-            <com.google.android.material.button.MaterialButton
-                    android:id="@+id/setting_button_save"
-                    android:layout_margin="5dp"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="0.9"
-                    android:text="@string/setting_button_save"/>
+            <TextView android:id="@+id/textview_error"
+                      android:layout_width="match_parent"
+                      android:textColor="@color/colorError"
+                      android:textStyle="bold"
+                      android:layout_marginHorizontal="10dp"
+                      android:textAllCaps="true"
+                      android:layout_height="wrap_content"/>
 
-            <com.google.android.material.button.MaterialButton
-                    android:id="@+id/setting_button_cancel"
-                    android:visibility="@{viewModel.firstUse ? View.GONE : View.VISIBLE}"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_margin="5dp"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/login_button_cancel"/>
+            <LinearLayout
+                    android:orientation="horizontal"
+                    android:layout_marginHorizontal="5dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                <com.google.android.material.button.MaterialButton
+                        android:id="@+id/setting_button_save"
+                        android:layout_margin="5dp"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="0.9"
+                        android:text="@string/setting_button_save"/>
+
+                <com.google.android.material.button.MaterialButton
+                        android:id="@+id/setting_button_cancel"
+                        android:visibility="@{viewModel.firstUse ? View.GONE : View.VISIBLE}"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_margin="5dp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/login_button_cancel"/>
+            </LinearLayout>
+
         </LinearLayout>
     </RelativeLayout>
 

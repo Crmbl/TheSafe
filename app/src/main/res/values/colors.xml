@@ -5,5 +5,6 @@
     <color name="colorAccent">#ee5253</color>
     <color name="colorHint">#bbbb</color>
     <color name="colorHintAccent">#cccccc</color>
+    <color name="colorError">#badc58</color>
     <color name="mtrl_textinput_default_box_stroke_color">#bbbb</color>
 </resources>
