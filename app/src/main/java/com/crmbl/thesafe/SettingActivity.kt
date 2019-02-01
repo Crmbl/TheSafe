@@ -15,6 +15,9 @@ import android.content.Intent
 import android.transition.Fade
 import android.transition.Transition
 import android.view.View
+import android.widget.Switch
+import androidx.core.hardware.fingerprint.FingerprintManagerCompat
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputLayout
 
 
@@ -65,6 +68,23 @@ class SettingActivity : AppCompatActivity() {
         saveButton.setOnClickListener{this.save()}
         var cancelButton = findViewById<MaterialButton>(R.id.setting_button_cancel)
         cancelButton.setOnClickListener{this.cancel()}
+
+        //TODO implementation of fingerprint manager thingy
+        var switchFingerprint = findViewById<Switch>(R.id.switch_fingerprint)
+        switchFingerprint.setOnClickListener {
+            if (switchFingerprint.isChecked) {
+                val manager = FingerprintManagerCompat.from(this)
+                if (manager.isHardwareDetected && manager.hasEnrolledFingerprints()) {
+                    val dialog = FingerprintDialog.newInstance(
+                        "Sign In",
+                        "Confirm fingerprint to continue."
+                    )
+                    dialog.show(supportFragmentManager, FingerprintDialog.FRAGMENT_TAG)
+                } else {
+                    Snackbar.make(switchFingerprint, "Fingerprint authentication is not supported.", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     private fun save() {
@@ -100,6 +120,7 @@ class SettingActivity : AppCompatActivity() {
         slide.interpolator = AccelerateDecelerateInterpolator()
         window.enterTransition = slide
 
+        // TODO is it working ?
         val fade = Fade(Fade.MODE_OUT)
         fade.duration = 300
         fade.interpolator = AccelerateDecelerateInterpolator()
@@ -115,5 +136,11 @@ class SettingActivity : AppCompatActivity() {
             override fun onTransitionCancel(transition: Transition?) {}
             override fun onTransitionStart(transition: Transition?) {}
         })
+    }
+
+    override fun onBackPressed() {
+        //super.onBackPressed()
+        if (prefs?.firstLogin!!)
+            finish()
     }
 }
