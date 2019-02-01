@@ -29,7 +29,6 @@ class LoginActivity : AppCompatActivity() {
     private var shake : Animation? = null
     private var slideLogging : Animation? = null
     private var rememberUsername : Boolean = false
-    private var useFingerprint : Boolean = false
     private var broadcastReceiver: BroadcastReceiver? = null
 
     public override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,16 +47,12 @@ class LoginActivity : AppCompatActivity() {
 
         prefs = Prefs(this)
         rememberUsername = prefs?.rememberUsername!!
-        useFingerprint = prefs?.useFingerprint!!
         binding = DataBindingUtil.setContentView(this, R.layout.activity_login)
         if (rememberUsername)
-            binding?.viewModel = LoginViewModel(prefs?.username!!)
+            binding?.viewModel = LoginViewModel(prefs?.username!!, "", false, prefs?.useFingerprint!!)
         else
-            binding?.viewModel = LoginViewModel("anus", "kipu")
-
-        if (useFingerprint) {
-            //var fingerprintManager : FingerprintManager = getSystemService(FINGERPRINT_SERVICE) as FingerprintManager
-        }
+            binding?.viewModel = LoginViewModel("", "", false, prefs?.useFingerprint!!)
+            //binding?.viewModel = LoginViewModel("anus", "kipu", false, prefs?.useFingerprint!!)
 
         loginCard = findViewById(R.id.login_card)
         var loginButtonCancel = findViewById<MaterialButton>(R.id.login_button_cancel)
@@ -75,7 +70,31 @@ class LoginActivity : AppCompatActivity() {
         slideUp = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_up)
         slideUp?.setAnimationListener(object : Animation.AnimationListener {
             override fun onAnimationRepeat(animation: Animation?) {}
-            override fun onAnimationEnd(animation: Animation?) {}
+            override fun onAnimationEnd(animation: Animation?) {
+                if (binding?.viewModel?.isUsingFingerprint!!) {
+
+
+                    // TODO HERE fingerprint!
+//                val manager = FingerprintManagerCompat.from(this)
+//                if (manager.isHardwareDetected && manager.hasEnrolledFingerprints()) {
+//                    val dialog = FingerprintDialog.newInstance(
+//                        "Sign In",
+//                        "Confirm fingerprint to continue."
+//                    )
+//                    dialog.show(supportFragmentManager, FingerprintDialog.FRAGMENT_TAG)
+//                } else {
+//                    Snackbar.make(switchFingerprint, "Fingerprint authentication is not supported.", Snackbar.LENGTH_SHORT).show()
+//                }
+
+
+
+
+
+
+
+
+                }
+            }
             override fun onAnimationStart(animation: Animation?) {
                 isOpen = true
                 loginCard?.visibility = View.VISIBLE
@@ -96,11 +115,6 @@ class LoginActivity : AppCompatActivity() {
             override fun onAnimationStart(animation: Animation?) {}
         })
         shake = AnimationUtils.loadAnimation(applicationContext, R.anim.shake)
-        shake?.setAnimationListener(object : Animation.AnimationListener {
-            override fun onAnimationRepeat(p0: Animation?) {}
-            override fun onAnimationEnd(p0: Animation?) {}
-            override fun onAnimationStart(p0: Animation?) {}
-        })
         slideLogging = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_down)
         slideLogging?.interpolator = AccelerateInterpolator()
         slideLogging?.startOffset = 100
@@ -113,7 +127,6 @@ class LoginActivity : AppCompatActivity() {
                 if (prefs?.firstLogin!!) {
                     var intent = Intent(this@LoginActivity, SettingActivity::class.java)
                     intent.putExtra("username", binding?.viewModel?.username)
-                    //intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                     startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@LoginActivity).toBundle())
                 }
                 else {
@@ -137,10 +150,6 @@ class LoginActivity : AppCompatActivity() {
 
         binding?.viewModel?.isUsingFingerprint = value
         loginCard?.startAnimation(slideUp)
-
-        if (value) {
-            //TODO init fingerprint manager
-        }
     }
 
     private fun hideLoginCard(value : Boolean) {

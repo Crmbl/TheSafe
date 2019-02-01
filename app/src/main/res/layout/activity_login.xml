@@ -38,7 +38,7 @@
                     app:icon="@drawable/ic_text_fields_white_24dp"
                     android:text="@string/login_button_password"/>
             <com.google.android.material.button.MaterialButton
-                    android:enabled="@{viewModel.usingFingerprint}"
+                    android:enabled="@{viewModel.finger}"
                     android:id="@+id/login_button_finger"
                     android:layout_marginVertical="5dp"
                     android:layout_marginHorizontal="50dp"

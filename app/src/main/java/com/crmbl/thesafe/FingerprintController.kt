@@ -77,8 +77,7 @@ class FingerprintController(
         errorText.removeCallbacks(resetErrorTextRunnable)
         icon.setImageResource(R.drawable.ic_fingerprint_white_24dp)
         errorText.setTextColor(ContextCompat.getColor(errorText.context, R.color.colorAccent))
-        //errorText.text = errorText.context.getString(R.string.fingerprint_recognized)
-        errorText.text = "Success"
+        errorText.text = errorText.context.getString(R.string.fingerprint_success)
         icon.postDelayed({
             callback.onAuthenticated()
         }, SUCCESS_DELAY_MILLIS)
@@ -90,8 +89,7 @@ class FingerprintController(
     }
 
     override fun onAuthenticationFailed() {
-        //showError(errorText.context.getString(R.string.fingerprint_not_recognized))
-        showError("Not recognized")
+        showError(errorText.context.getString(R.string.fingerprint_not_recognized))
     }
 
     fun setTitle(title: String) {

@@ -49,23 +49,19 @@ class FingerprintDialog : DialogFragment(), FingerprintController.Callback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        try {
-            keyStore = KeyStore.getInstance("AndroidKeyStore")
-        }
+        try { keyStore = KeyStore.getInstance("AndroidKeyStore") }
         catch (e: KeyStoreException) { throw RuntimeException("Failed to get an instance of KeyStore", e) }
 
-        try {
-            keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
-        }
+        try { keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore") }
         catch (e: NoSuchAlgorithmException) { throw RuntimeException("Failed to get an instance of KeyGenerator", e) }
         catch (e: NoSuchProviderException) { throw RuntimeException("Failed to get an instance of KeyGenerator", e) }
 
         createKey(DEFAULT_KEY_NAME)
 
         val defaultCipher: Cipher
-        try {
-            defaultCipher = Cipher.getInstance(KeyProperties.KEY_ALGORITHM_AES + "/" + KeyProperties.BLOCK_MODE_CBC + "/" + KeyProperties.ENCRYPTION_PADDING_PKCS7)
-        }
+        try { defaultCipher = Cipher.getInstance(KeyProperties.KEY_ALGORITHM_AES + "/"
+                                                            + KeyProperties.BLOCK_MODE_CBC + "/"
+                                                            + KeyProperties.ENCRYPTION_PADDING_PKCS7) }
         catch (e: NoSuchAlgorithmException) { throw RuntimeException("Failed to get an instance of Cipher", e) }
         catch (e: NoSuchPaddingException) { throw RuntimeException("Failed to get an instance of Cipher", e) }
 
@@ -123,7 +119,6 @@ class FingerprintDialog : DialogFragment(), FingerprintController.Callback {
 
             val builder = KeyGenParameterSpec.Builder(keyName, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
                 .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
-                // Require the user to authenticate with a fingerprint to authorize every use of the key
                 .setUserAuthenticationRequired(true)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
 
