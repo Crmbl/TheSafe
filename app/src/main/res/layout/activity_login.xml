@@ -138,14 +138,30 @@
                         android:layout_height="0dp"
                         android:src="@drawable/ic_fingerprint_white_24dp"/>
 
-                <com.google.android.material.button.MaterialButton
-                        android:id="@+id/login_button_cancel_fingerprint"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_margin="5dp"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|bottom"
-                        android:text="@string/login_button_cancel"/>
+                <LinearLayout
+                        android:orientation="horizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                    <TextView android:id="@+id/textview_finger"
+                            android:layout_width="0dp"
+                            android:layout_weight="0.9"
+                            android:textColor="@color/colorError"
+                            android:textStyle="bold"
+                            android:padding="13dp"
+                            android:layout_margin="5dp"
+                            android:textAllCaps="true"
+                            android:text="@{viewModel.fingerMessage}"
+                            android:layout_height="match_parent"/>
+
+                    <com.google.android.material.button.MaterialButton
+                            android:id="@+id/login_button_cancel_fingerprint"
+                            style="@style/Widget.MaterialComponents.Button.TextButton"
+                            android:layout_margin="5dp"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/login_button_cancel"/>
+                </LinearLayout>
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>

@@ -1,22 +1,12 @@
 package com.crmbl.thesafe
 
-import android.content.Context
-import android.widget.ImageView
-import android.widget.TextView
-import androidx.core.content.ContextCompat
 import androidx.core.hardware.fingerprint.FingerprintManagerCompat
 import androidx.core.os.CancellationSignal
 
+
 class FingerprintController(
     private val fingerprintManager: FingerprintManagerCompat,
-    private val callback: Callback,
-    private val title: TextView,
-    private val subtitle: TextView,
-    private val errorText: TextView,
-    private val icon: ImageView) : FingerprintManagerCompat.AuthenticationCallback() {
-
-    private val context: Context
-        get() = errorText.context
+    private val callback: Callback) : FingerprintManagerCompat.AuthenticationCallback() {
 
     private var cancellationSignal: CancellationSignal? = null
     private var selfCancelled = false
@@ -24,19 +14,10 @@ class FingerprintController(
     private val isFingerprintAuthAvailable: Boolean
         get() = fingerprintManager.isHardwareDetected && fingerprintManager.hasEnrolledFingerprints()
 
-    private val resetErrorTextRunnable: Runnable = Runnable {
-        errorText.setTextColor(ContextCompat.getColor(context, R.color.colorHint))
-        errorText.text = "Touch sensor"
-        icon.setImageResource(R.drawable.ic_fingerprint_white_24dp)
-    }
-
-    init {
-        errorText.post(resetErrorTextRunnable)
-    }
-
     interface Callback {
-        fun onAuthenticated()
+        fun onSuccess()
         fun onError()
+        fun onHelp()
     }
 
     fun startListening(cryptoObject: FingerprintManagerCompat.CryptoObject) {
@@ -55,53 +36,19 @@ class FingerprintController(
         }
     }
 
-    private fun showError(text: CharSequence?) {
-        icon.setImageResource(R.drawable.ic_fingerprint_white_24dp)
-        errorText.text = text
-        errorText.setTextColor(ContextCompat.getColor(errorText.context, R.color.colorError))
-        errorText.removeCallbacks(resetErrorTextRunnable)
-        errorText.postDelayed(resetErrorTextRunnable, ERROR_TIMEOUT_MILLIS)
-    }
-
     override fun onAuthenticationError(errMsgId: Int, errString: CharSequence?) {
-        if (!selfCancelled) {
-            //TODO in english pls !
-            showError(errString)
-            icon.postDelayed({
-                callback.onError()
-            }, ERROR_TIMEOUT_MILLIS)
-        }
-    }
-
-    override fun onAuthenticationSucceeded(result: FingerprintManagerCompat.AuthenticationResult?) {
-        errorText.removeCallbacks(resetErrorTextRunnable)
-        icon.setImageResource(R.drawable.ic_fingerprint_white_24dp)
-        errorText.setTextColor(ContextCompat.getColor(errorText.context, R.color.colorAccent))
-        errorText.text = errorText.context.getString(R.string.fingerprint_success)
-        icon.postDelayed({
-            callback.onAuthenticated()
-        }, SUCCESS_DELAY_MILLIS)
-    }
-
-    override fun onAuthenticationHelp(helpMsgId: Int, helpString: CharSequence?) {
-        //TODO change for english helpmessage ! not fr :(
-        showError(helpString)
+        if (!selfCancelled) { callback.onError() }
     }
 
     override fun onAuthenticationFailed() {
-        showError(errorText.context.getString(R.string.fingerprint_not_recognized))
+        callback.onError()
     }
 
-    fun setTitle(title: String) {
-        this.title.text = title
+    override fun onAuthenticationHelp(helpMsgId: Int, helpString: CharSequence?) {
+        callback.onHelp()
     }
 
-    fun setSubtitle(subtitle: String) {
-        this.subtitle.text = subtitle
-    }
-
-    companion object {
-        private const val ERROR_TIMEOUT_MILLIS = 1600L
-        private const val SUCCESS_DELAY_MILLIS = 1300L
+    override fun onAuthenticationSucceeded(result: FingerprintManagerCompat.AuthenticationResult?) {
+        callback.onSuccess()
     }
 }

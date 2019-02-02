@@ -15,21 +15,40 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyPermanentlyInvalidatedException
+import android.security.keystore.KeyProperties
+import android.widget.TextView
+import androidx.core.hardware.fingerprint.FingerprintManagerCompat
+import java.io.IOException
+import java.security.*
+import java.security.cert.CertificateException
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.NoSuchPaddingException
+import javax.crypto.SecretKey
 
 
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
 
     var prefs : Prefs? = null
     var binding : ActivityLoginBinding? = null
-    var loginCard : MaterialCardView? = null
+    private var loginCard : MaterialCardView? = null
 
     private var isOpen : Boolean = false
     private var slideUp : Animation? = null
     private var slideDown : Animation? = null
     private var shake : Animation? = null
-    private var slideLogging : Animation? = null
+    private var slideLogin : Animation? = null
     private var rememberUsername : Boolean = false
     private var broadcastReceiver: BroadcastReceiver? = null
+    private var cryptoObject: FingerprintManagerCompat.CryptoObject? = null
+    private var keyStore: KeyStore? = null
+    private var keyGenerator: KeyGenerator? = null
+    private var keyName = "safe_key"
+    private val controller: FingerprintController by lazy {
+        FingerprintController(FingerprintManagerCompat.from(applicationContext), this)
+    }
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,21 +64,35 @@ class LoginActivity : AppCompatActivity() {
         }
         registerReceiver(broadcastReceiver, IntentFilter("finish_activity"))
 
-        prefs = Prefs(this)
-        rememberUsername = prefs?.rememberUsername!!
+        //region init binding
+
+        this.prefs = Prefs(this)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_login)
+        rememberUsername = prefs?.rememberUsername!!
+        val useFingerprint = prefs?.useFingerprint!!
         if (rememberUsername)
-            binding?.viewModel = LoginViewModel(prefs?.username!!, "", false, prefs?.useFingerprint!!)
+            binding?.viewModel = LoginViewModel(prefs?.username!!, "", "",false, useFingerprint)
         else
-            binding?.viewModel = LoginViewModel("", "", false, prefs?.useFingerprint!!)
-            //binding?.viewModel = LoginViewModel("anus", "kipu", false, prefs?.useFingerprint!!)
+            binding?.viewModel = LoginViewModel("", "", "", false, useFingerprint)
+
+        //endregion
+        //region init views
 
         loginCard = findViewById(R.id.login_card)
-        var loginButtonCancel = findViewById<MaterialButton>(R.id.login_button_cancel)
-        var loginButtonText = findViewById<MaterialButton>(R.id.login_button_text)
-        var loginButtonFinger = findViewById<MaterialButton>(R.id.login_button_finger)
-        var loginButtonCancelF = findViewById<MaterialButton>(R.id.login_button_cancel_fingerprint)
-        var loginButtonGo = findViewById<MaterialButton>(R.id.login_button_go)
+        val loginButtonCancel = findViewById<MaterialButton>(R.id.login_button_cancel)
+        val loginButtonText = findViewById<MaterialButton>(R.id.login_button_text)
+        val loginButtonFinger = findViewById<MaterialButton>(R.id.login_button_finger)
+        val loginButtonCancelF = findViewById<MaterialButton>(R.id.login_button_cancel_fingerprint)
+        val loginButtonGo = findViewById<MaterialButton>(R.id.login_button_go)
+        slideUp = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_up)
+        slideDown = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_down)
+        shake = AnimationUtils.loadAnimation(applicationContext, R.anim.shake)
+        slideLogin = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_down)
+        slideLogin?.interpolator = AccelerateInterpolator()
+        slideLogin?.startOffset = 100
+
+        //endregion
+        //region init listeners
 
         loginButtonText.setOnClickListener{this.showLoginCard(false)}
         loginButtonCancel.setOnClickListener{this.hideLoginCard(false)}
@@ -67,83 +100,98 @@ class LoginActivity : AppCompatActivity() {
         loginButtonCancelF.setOnClickListener{this.hideLoginCard(true)}
         loginButtonGo.setOnClickListener{this.login()}
 
-        slideUp = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_up)
         slideUp?.setAnimationListener(object : Animation.AnimationListener {
             override fun onAnimationRepeat(animation: Animation?) {}
             override fun onAnimationEnd(animation: Animation?) {
-                if (binding?.viewModel?.isUsingFingerprint!!) {
-
-
-                    // TODO HERE fingerprint!
-//                val manager = FingerprintManagerCompat.from(this)
-//                if (manager.isHardwareDetected && manager.hasEnrolledFingerprints()) {
-//                    val dialog = FingerprintDialog.newInstance(
-//                        "Sign In",
-//                        "Confirm fingerprint to continue."
-//                    )
-//                    dialog.show(supportFragmentManager, FingerprintDialog.FRAGMENT_TAG)
-//                } else {
-//                    Snackbar.make(switchFingerprint, "Fingerprint authentication is not supported.", Snackbar.LENGTH_SHORT).show()
-//                }
-
-
-
-
-
-
-
-
-                }
+                handleFingerprint()
             }
             override fun onAnimationStart(animation: Animation?) {
                 isOpen = true
                 loginCard?.visibility = View.VISIBLE
             }
         })
-        slideDown = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_down)
+
         slideDown?.setAnimationListener(object : Animation.AnimationListener {
-            override fun onAnimationRepeat(animation: Animation?) {}
             override fun onAnimationEnd(animation: Animation?) {
                 isOpen = false
                 loginCard?.visibility = View.INVISIBLE
-                if (rememberUsername)
-                    binding?.viewModel?.username = prefs?.username!!
-                else
-                    binding?.viewModel?.username = ""
+                if (rememberUsername) binding?.viewModel?.username = prefs?.username!!
+                else binding?.viewModel?.username = ""
                 binding?.viewModel?.password = ""
             }
+            //region not used
+            override fun onAnimationRepeat(animation: Animation?) {}
             override fun onAnimationStart(animation: Animation?) {}
+            //endregion
         })
-        shake = AnimationUtils.loadAnimation(applicationContext, R.anim.shake)
-        slideLogging = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_down)
-        slideLogging?.interpolator = AccelerateInterpolator()
-        slideLogging?.startOffset = 100
-        slideLogging?.setAnimationListener(object : Animation.AnimationListener {
-            override fun onAnimationRepeat(p0: Animation?) {}
+
+        slideLogin?.setAnimationListener(object : Animation.AnimationListener {
             override fun onAnimationEnd(p0: Animation?) {
                 isOpen = false
                 loginCard?.visibility = View.INVISIBLE
-
-                if (prefs?.firstLogin!!) {
-                    var intent = Intent(this@LoginActivity, SettingActivity::class.java)
-                    intent.putExtra("username", binding?.viewModel?.username)
-                    startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@LoginActivity).toBundle())
-                }
-                else {
-                    //TODO call main activity
-                    //startActivity(Intent(this@LoginActivity, MainActivity::class.java))
-                    //finish()
-                }
+                handleLogin()
             }
+            //region not used
+            override fun onAnimationRepeat(p0: Animation?) {}
             override fun onAnimationStart(p0: Animation?) {}
+            //endregion
         })
+
+        //endregion
+        //region fingerprint
+
+        try { keyStore = KeyStore.getInstance("AndroidKeyStore") }
+        catch (e: KeyStoreException) { throw RuntimeException("Failed to get an instance of KeyStore", e) }
+
+        try { keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore") }
+        catch (e: NoSuchAlgorithmException) { throw RuntimeException("Failed to get an instance of KeyGenerator", e) }
+        catch (e: NoSuchProviderException) { throw RuntimeException("Failed to get an instance of KeyGenerator", e) }
+
+        createKey(this.keyName)
+
+        val defaultCipher: Cipher
+        try { defaultCipher = Cipher.getInstance(KeyProperties.KEY_ALGORITHM_AES + "/"
+                + KeyProperties.BLOCK_MODE_CBC + "/"
+                + KeyProperties.ENCRYPTION_PADDING_PKCS7) }
+        catch (e: NoSuchAlgorithmException) { throw RuntimeException("Failed to get an instance of Cipher", e) }
+        catch (e: NoSuchPaddingException) { throw RuntimeException("Failed to get an instance of Cipher", e) }
+
+        if (initCipher(defaultCipher, this.keyName))
+            cryptoObject = FingerprintManagerCompat.CryptoObject(defaultCipher)
+
+        //endregion
     }
 
-    @Override
-    override fun onDestroy() {
+    public override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(broadcastReceiver)
     }
+
+    override fun onResume() {
+        super.onResume()
+        handleFingerprint()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        controller.stopListening()
+    }
+
+    override fun onSuccess() {
+        loginCard?.startAnimation(slideLogin)
+    }
+
+    override fun onError() {
+        loginCard?.startAnimation(shake)
+    }
+
+    override fun onHelp() {
+        val textFinger = findViewById<TextView>(R.id.textview_finger)
+        binding?.viewModel?.fingerMessage = resources.getString(R.string.fingerprint_help)
+        textFinger.postDelayed({ binding?.viewModel?.fingerMessage = "" }, 1500)
+    }
+
+    //region Private methods
 
     private fun showLoginCard(value : Boolean) {
         if (isOpen) return
@@ -155,11 +203,12 @@ class LoginActivity : AppCompatActivity() {
     private fun hideLoginCard(value : Boolean) {
         binding?.viewModel?.isUsingFingerprint = value
         loginCard?.startAnimation(slideDown)
+        controller.stopListening()
     }
 
     private fun login() {
-        var username = binding?.viewModel?.username
-        var password = binding?.viewModel?.password
+        val username = binding?.viewModel?.username
+        val password = binding?.viewModel?.password
         if (username.isNullOrBlank() || password.isNullOrBlank()) { // Error handling
             loginCard?.startAnimation(shake)
         }
@@ -167,10 +216,63 @@ class LoginActivity : AppCompatActivity() {
         //TODO remove bypass security
 //        if (prefs?.usernameHash == StringUtil().md5(username!!) && prefs?.passwordHash == StringUtil().md5(password!!)) {
         if ("anus" == username && "kipu" == password) {
-            loginCard?.startAnimation(slideLogging)
+            loginCard?.startAnimation(slideLogin)
         }
-        else { // Error handling
+        else {
             loginCard?.startAnimation(shake)
         }
     }
+
+    private fun handleLogin() {
+        if (prefs?.firstLogin!!) {
+            val intent = Intent(this@LoginActivity, SettingActivity::class.java)
+            intent.putExtra("username", binding?.viewModel?.username)
+            startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@LoginActivity).toBundle())
+        }
+        else {
+            //TODO don't forget finish activity
+            val intent = Intent(this@LoginActivity, MainActivity::class.java)
+            startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@LoginActivity).toBundle())
+        }
+    }
+
+    private fun handleFingerprint() {
+        if (!isOpen || !binding?.viewModel?.isUsingFingerprint!!) return
+        cryptoObject?.let { controller.startListening(it) }
+    }
+
+    private fun initCipher(cipher: Cipher, keyName: String): Boolean {
+        return try {
+            keyStore?.load(null)
+            val key = keyStore?.getKey(keyName, null) as SecretKey
+            cipher.init(Cipher.ENCRYPT_MODE, key)
+            true
+        }
+        catch (e: KeyPermanentlyInvalidatedException) { false }
+        catch (e: KeyStoreException) { throw RuntimeException("Failed to init Cipher", e) }
+        catch (e: CertificateException) { throw RuntimeException("Failed to init Cipher", e) }
+        catch (e: UnrecoverableKeyException) { throw RuntimeException("Failed to init Cipher", e) }
+        catch (e: IOException) { throw RuntimeException("Failed to init Cipher", e) }
+        catch (e: NoSuchAlgorithmException) { throw RuntimeException("Failed to init Cipher", e) }
+        catch (e: InvalidKeyException) { throw RuntimeException("Failed to init Cipher", e) }
+    }
+
+    private fun createKey(keyName: String) {
+        try {
+            keyStore?.load(null)
+            val builder = KeyGenParameterSpec.Builder(keyName, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+                .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
+                .setUserAuthenticationRequired(true)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
+
+            keyGenerator?.init(builder.build())
+            keyGenerator?.generateKey()
+        }
+        catch (e: NoSuchAlgorithmException) { throw RuntimeException(e) }
+        catch (e: InvalidAlgorithmParameterException) { throw RuntimeException(e) }
+        catch (e: CertificateException) { throw RuntimeException(e) }
+        catch (e: IOException) { throw RuntimeException(e) }
+    }
+
+    //endregion
 }

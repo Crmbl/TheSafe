@@ -6,6 +6,7 @@ import androidx.databinding.Bindable
 data class LoginViewModel(
     private var _username: String = "",
     private var _password: String = "",
+    private var _fingerMessage : String = "",
     private var _isUsingFingerprint: Boolean = false,
     private var _finger: Boolean = false
 ) : BaseObservable() {
@@ -24,6 +25,13 @@ data class LoginViewModel(
         notifyPropertyChanged(BR.password)
     }
 
+    var fingerMessage: String
+    @Bindable get() = _fingerMessage
+    set(value) {
+        _fingerMessage = value
+        notifyPropertyChanged(BR.fingerMessage)
+    }
+
     var isUsingFingerprint: Boolean
     @Bindable get() = _isUsingFingerprint
     set(value) {
@@ -32,9 +40,9 @@ data class LoginViewModel(
     }
 
     var finger: Boolean
-        @Bindable get() = _finger
-        set(value) {
-            _finger = value
-            notifyPropertyChanged(BR.finger)
-        }
+    @Bindable get() = _finger
+    set(value) {
+        _finger = value
+        notifyPropertyChanged(BR.finger)
+    }
 }
