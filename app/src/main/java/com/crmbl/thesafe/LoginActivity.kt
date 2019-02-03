@@ -18,6 +18,9 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
+import android.transition.Fade
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.hardware.fingerprint.FingerprintManagerCompat
 import java.io.IOException
@@ -39,6 +42,8 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
     private var slideUp : Animation? = null
     private var slideDown : Animation? = null
     private var shake : Animation? = null
+    private var expand : Animation? = null
+    private var expandXY : Animation? = null
     private var slideLogin : Animation? = null
     private var rememberUsername : Boolean = false
     private var broadcastReceiver: BroadcastReceiver? = null
@@ -53,16 +58,17 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
+        setAnimation()
 
         broadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(arg0: Context, intent: Intent) {
                 val action = intent.action
-                if (action == "finish_activity") {
+                if (action == "finish_LoginActivity") {
                     finish()
                 }
             }
         }
-        registerReceiver(broadcastReceiver, IntentFilter("finish_activity"))
+        registerReceiver(broadcastReceiver, IntentFilter("finish_LoginActivity"))
 
         //region init binding
 
@@ -108,6 +114,11 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
             override fun onAnimationStart(animation: Animation?) {
                 isOpen = true
                 loginCard?.visibility = View.VISIBLE
+                if (rememberUsername)
+                    binding?.viewModel?.username = prefs?.username!!
+                else
+                    binding?.viewModel?.username = ""
+                binding?.viewModel?.password = ""
             }
         })
 
@@ -115,9 +126,6 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
             override fun onAnimationEnd(animation: Animation?) {
                 isOpen = false
                 loginCard?.visibility = View.INVISIBLE
-                if (rememberUsername) binding?.viewModel?.username = prefs?.username!!
-                else binding?.viewModel?.username = ""
-                binding?.viewModel?.password = ""
             }
             //region not used
             override fun onAnimationRepeat(animation: Animation?) {}
@@ -136,6 +144,9 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
             override fun onAnimationStart(p0: Animation?) {}
             //endregion
         })
+
+        expand = AnimationUtils.loadAnimation(applicationContext, R.anim.expand)
+        expandXY = AnimationUtils.loadAnimation(applicationContext, R.anim.expand_xy)
 
         //endregion
         //region fingerprint
@@ -178,6 +189,8 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
     }
 
     override fun onSuccess() {
+        val fingerPrintIcon = findViewById<ImageView>(R.id.imageview_fingerprint)
+        fingerPrintIcon.startAnimation(expandXY)
         loginCard?.startAnimation(slideLogin)
     }
 
@@ -189,6 +202,7 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
         val textFinger = findViewById<TextView>(R.id.textview_finger)
         binding?.viewModel?.fingerMessage = resources.getString(R.string.fingerprint_help)
         textFinger.postDelayed({ binding?.viewModel?.fingerMessage = "" }, 1500)
+        textFinger.startAnimation(expand)
     }
 
     //region Private methods
@@ -213,9 +227,7 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
             loginCard?.startAnimation(shake)
         }
 
-        //TODO remove bypass security
-//        if (prefs?.usernameHash == StringUtil().md5(username!!) && prefs?.passwordHash == StringUtil().md5(password!!)) {
-        if ("anus" == username && "kipu" == password) {
+        if (prefs?.usernameHash == StringUtil().md5(username!!) && prefs?.passwordHash == StringUtil().md5(password!!)) {
             loginCard?.startAnimation(slideLogin)
         }
         else {
@@ -224,15 +236,19 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
     }
 
     private fun handleLogin() {
-        if (prefs?.firstLogin!!) {
-            val intent = Intent(this@LoginActivity, SettingActivity::class.java)
+        val previousActivity = intent.getStringExtra("previous")
+        if (previousActivity.isNullOrBlank()) {
+            val intent : Intent = if (prefs?.firstLogin!!) {
+                Intent(this@LoginActivity, SettingActivity::class.java)
+            } else {
+                Intent(this@LoginActivity, MainActivity::class.java)
+            }
             intent.putExtra("username", binding?.viewModel?.username)
             startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@LoginActivity).toBundle())
         }
         else {
-            //TODO don't forget finish activity
-            val intent = Intent(this@LoginActivity, MainActivity::class.java)
-            startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@LoginActivity).toBundle())
+            finish()
+            this.overridePendingTransition(R.anim.abc_fade_in, R.anim.abc_fade_out)
         }
     }
 
@@ -272,6 +288,18 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
         catch (e: InvalidAlgorithmParameterException) { throw RuntimeException(e) }
         catch (e: CertificateException) { throw RuntimeException(e) }
         catch (e: IOException) { throw RuntimeException(e) }
+    }
+
+    private fun setAnimation() {
+        val fadeIn = Fade(Fade.MODE_IN)
+        fadeIn.duration = 300
+        fadeIn.interpolator = AccelerateDecelerateInterpolator()
+        window.enterTransition = fadeIn
+
+        val fadeOut = Fade(Fade.MODE_OUT)
+        fadeOut.duration = 300
+        fadeOut.interpolator = AccelerateDecelerateInterpolator()
+        window.exitTransition = fadeOut
     }
 
     //endregion

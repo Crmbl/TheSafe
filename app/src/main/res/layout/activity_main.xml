@@ -1,34 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.drawerlayout.widget.DrawerLayout
+<androidx.coordinatorlayout.widget.CoordinatorLayout
         xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
         tools:context="com.crmbl.thesafe.MainActivity">
-    <LinearLayout
-            android:id="@+id/ll_main_layout"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:background="#444444"
-            android:padding="25dp"
-            android:orientation="vertical">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:padding="25dp">
-
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/fingerButton"
+    <FrameLayout android:id="@+id/layout_lock"
+                 android:layout_width="match_parent"
+                 android:layout_height="match_parent"
+                 android:background="@color/colorBackground"
+                 android:visibility="gone"
+                 android:elevation="100dp"
+                 android:scaleType="fitXY">
+        <ImageView
+                android:contentDescription="@string/lock_image"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center|bottom"
-                android:layout_margin="16dp"
-                android:src="@drawable/ic_fingerprint_white_24dp" />
-        </LinearLayout>
-    </LinearLayout>
+                android:src="@drawable/ic_lock_hint_64dp"
+                android:layout_gravity="center"/>
+    </FrameLayout>
 
-</androidx.drawerlayout.widget.DrawerLayout>
+    <com.google.android.material.bottomappbar.BottomAppBar
+            android:id="@+id/bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            app:hideOnScroll="true"
+            android:backgroundTint="@color/colorPrimaryDark"
+            style="@style/Widget.MaterialComponents.BottomAppBar"
+            app:fabAlignmentMode="center"
+            app:navigationIcon="@drawable/ic_menu_white_24dp"/>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

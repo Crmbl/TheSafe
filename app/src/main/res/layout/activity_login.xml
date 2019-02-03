@@ -131,7 +131,7 @@
                     android:layout_height="match_parent"
                     android:clickable="true">
 
-                <ImageView
+                <ImageView android:id="@+id/imageview_fingerprint"
                         android:layout_gravity="center"
                         android:layout_width="48dp"
                         android:layout_weight="0.9"

@@ -18,4 +18,6 @@
     <string name="setting_button_save">save</string>
     <string name="setting_error_message">please, fill the fields with a *</string>
     <string name="fingerprint_help">too fast, try again</string>
+    <string name="app_bar_menu_search">search</string>
+    <string name="lock_image">lock_image</string>
 </resources>

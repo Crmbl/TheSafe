@@ -14,6 +14,21 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
+        <FrameLayout android:id="@+id/layout_lock"
+                     android:layout_width="match_parent"
+                     android:layout_height="match_parent"
+                     android:background="@color/colorBackground"
+                     android:visibility="gone"
+                     android:elevation="100dp"
+                     android:scaleType="fitXY">
+            <ImageView
+                    android:contentDescription="@string/lock_image"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:src="@drawable/ic_lock_hint_64dp"
+                    android:layout_gravity="center"/>
+        </FrameLayout>
+
         <com.google.android.material.textfield.TextInputLayout android:id="@+id/decryp_password_field"
                 android:layout_alignParentTop="true"
                 android:layout_width="match_parent"
