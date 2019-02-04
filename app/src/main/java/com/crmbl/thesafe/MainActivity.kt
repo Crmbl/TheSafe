@@ -16,10 +16,13 @@ import android.transition.Fade
 import android.transition.Transition
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomappbar.BottomAppBar
+import androidx.appcompat.widget.SearchView
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -51,6 +54,11 @@ class MainActivity : AppCompatActivity() {
         lockLayout = findViewById(R.id.layout_lock)
         val goSettings = findViewById<ImageView>(R.id.imageview_go_settings)
         goSettings.setOnClickListener {this.goSettings()}
+
+        val searchView = findViewById<SearchView>(R.id.searchview)
+        val editText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
+        editText.setTextColor(resources.getColor(R.color.colorBackground))
+        editText.setHintTextColor(resources.getColor(R.color.colorHint))
 
         //var ins: InputStream = assets.open("docd.qsp")
         //var origin : ByteArray = ins.readBytes()

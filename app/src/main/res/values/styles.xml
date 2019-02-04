@@ -14,15 +14,8 @@
         <item name="android:windowNoTitle">true</item>
     </style>
 
-    <!--todo complete this from activity_main.xml-->
     <style name="SearchViewTheme" parent="Widget.AppCompat.SearchView">
         <item name="android:background">@drawable/bg_searchview_rounded</item>
-        <item name="android:autoCompleteTextViewStyle">@style/AutoCompleteTextViewTheme</item>
     </style>
 
-    <style name="AutoCompleteTextViewTheme">
-        <item name="android:editTextColor">@color/colorPrimary</item>
-        <item name="android:textColorHint">@color/colorAccent</item>
-        <item name="android:textColor">@color/colorError</item>
-    </style>
 </resources>
