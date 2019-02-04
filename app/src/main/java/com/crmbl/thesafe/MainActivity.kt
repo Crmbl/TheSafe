@@ -17,6 +17,7 @@ import android.transition.Transition
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
+import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomappbar.BottomAppBar
 
@@ -47,15 +48,10 @@ class MainActivity : AppCompatActivity() {
         prefs = Prefs(this)
         setContentView(R.layout.activity_main)
         bottomBar = findViewById(R.id.bar)
-        bottomBar?.replaceMenu(R.menu.main_menu)
-        bottomBar?.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                R.id.app_bar_setting -> this.goSettings()
-            }
-            true
-        }
-
         lockLayout = findViewById(R.id.layout_lock)
+        val goSettings = findViewById<ImageView>(R.id.imageview_go_settings)
+        goSettings.setOnClickListener {this.goSettings()}
+
         //var ins: InputStream = assets.open("docd.qsp")
         //var origin : ByteArray = ins.readBytes()
         //ins.close()

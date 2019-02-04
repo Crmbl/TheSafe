@@ -20,4 +20,5 @@
     <string name="fingerprint_help">too fast, try again</string>
     <string name="app_bar_menu_search">search</string>
     <string name="lock_image">lock_image</string>
+    <string name="searchview_hint_text">Search...</string>
 </resources>

@@ -13,13 +13,13 @@
             android:supportsRtl="true"
             android:theme="@style/AppTheme"
         tools:ignore="GoogleAppIndexingWarning">
-        <activity android:name=".LoginActivity" android:theme="@style/LoginActivityStyle">
+        <activity android:name=".LoginActivity" android:theme="@style/NoTitleActivityStyle">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity android:name=".SettingActivity" android:theme="@style/SettingActivityStyle"/>
-        <activity android:name=".MainActivity" android:theme="@style/MainActivityStyle"/>
+        <activity android:name=".SettingActivity" />
+        <activity android:name=".MainActivity" android:theme="@style/NoTitleActivityStyle" />
     </application>
 </manifest>

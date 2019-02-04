@@ -173,6 +173,10 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
         //endregion
     }
 
+    override fun onBackPressed() {
+        //Do nothing ! The user must stay in here
+    }
+
     public override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(broadcastReceiver)

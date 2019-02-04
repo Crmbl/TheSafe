@@ -10,13 +10,19 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
-    <style name="LoginActivityStyle" parent="AppTheme">
+    <style name="NoTitleActivityStyle" parent="AppTheme">
         <item name="android:windowNoTitle">true</item>
     </style>
 
-    <style name="SettingActivityStyle" parent="AppTheme">
+    <!--todo complete this from activity_main.xml-->
+    <style name="SearchViewTheme" parent="Widget.AppCompat.SearchView">
+        <item name="android:background">@drawable/bg_searchview_rounded</item>
+        <item name="android:autoCompleteTextViewStyle">@style/AutoCompleteTextViewTheme</item>
     </style>
 
-    <style name="MainActivityStyle" parent="AppTheme">
+    <style name="AutoCompleteTextViewTheme">
+        <item name="android:editTextColor">@color/colorPrimary</item>
+        <item name="android:textColorHint">@color/colorAccent</item>
+        <item name="android:textColor">@color/colorError</item>
     </style>
 </resources>
