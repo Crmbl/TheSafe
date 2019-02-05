@@ -97,6 +97,12 @@ class SettingActivity : AppCompatActivity() {
             textViewError.startAnimation(expand)
             return
         }
+        if (!CryptoUtil(this.applicationContext).saltChecker(viewModel.settingPassword, viewModel.settingSalt)) {
+            textViewError.text = resources.getString(R.string.setting_decrypterror_message)
+            textViewError.postDelayed({ textViewError.text = "" }, 1500)
+            textViewError.startAnimation(expand)
+            return
+        }
         else {
             textViewError.text = ""
             prefs?.saltDecryptHash = viewModel.settingSalt

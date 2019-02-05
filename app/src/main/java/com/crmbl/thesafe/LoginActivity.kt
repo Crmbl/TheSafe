@@ -1,5 +1,6 @@
 package com.crmbl.thesafe
 
+import android.annotation.SuppressLint
 import android.app.ActivityOptions
 import android.os.Bundle
 import android.view.View
@@ -239,6 +240,7 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
         }
     }
 
+    @SuppressLint("PrivateResource")
     private fun handleLogin() {
         val previousActivity = intent.getStringExtra("previous")
         if (previousActivity.isNullOrBlank()) {
