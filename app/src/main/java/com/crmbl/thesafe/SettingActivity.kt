@@ -16,11 +16,15 @@ import com.crmbl.thesafe.databinding.ActivitySettingBinding
 import com.google.android.material.button.MaterialButton
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.Uri
 import android.transition.Fade
 import android.transition.Transition
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.ImageView
+import androidx.core.content.ContextCompat
 import com.google.android.material.textfield.TextInputLayout
+import java.io.File
 
 
 class SettingActivity : AppCompatActivity() {
@@ -33,7 +37,10 @@ class SettingActivity : AppCompatActivity() {
     private var expand : Animation? = null
     private var broadcastReceiver: BroadcastReceiver? = null
     private var lockLayout : FrameLayout? = null
+    private var passField : TextInputLayout? = null
+    private var saltField : TextInputLayout? = null
     private var goMain : Boolean = false
+    private var validated : Boolean = false
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,10 +61,10 @@ class SettingActivity : AppCompatActivity() {
         binding = DataBindingUtil.setContentView(this@SettingActivity, R.layout.activity_setting)
 
         lockLayout = findViewById(R.id.layout_lock)
-        val passField = findViewById<TextInputLayout>(R.id.decryp_password_field)
-        val saltField = findViewById<TextInputLayout>(R.id.decryp_salt_field)
-        passField.visibility = View.GONE
-        saltField.visibility = View.GONE
+        passField = findViewById(R.id.decryp_password_field)
+        saltField = findViewById(R.id.decryp_salt_field)
+        passField?.visibility = View.GONE
+        saltField?.visibility = View.GONE
 
         if (prefs?.firstLogin!!) {
             binding?.viewModel = SettingViewModel()
@@ -77,8 +84,8 @@ class SettingActivity : AppCompatActivity() {
             override fun onAnimationRepeat(p0: Animation?) {}
             override fun onAnimationEnd(p0: Animation?) {}
             override fun onAnimationStart(p0: Animation?) {
-                passField.visibility = View.VISIBLE
-                saltField.visibility = View.VISIBLE
+                passField?.visibility = View.VISIBLE
+                saltField?.visibility = View.VISIBLE
             }
         })
 
@@ -86,6 +93,8 @@ class SettingActivity : AppCompatActivity() {
         saveButton.setOnClickListener{this.save()}
         val cancelButton = findViewById<MaterialButton>(R.id.setting_button_cancel)
         cancelButton.setOnClickListener{this.cancel()}
+        val checkButton = findViewById<MaterialButton>(R.id.check_decrypt_button)
+        checkButton.setOnClickListener{this.check()}
     }
 
     private fun save() {
@@ -97,8 +106,8 @@ class SettingActivity : AppCompatActivity() {
             textViewError.startAnimation(expand)
             return
         }
-        if (!CryptoUtil(this.applicationContext).saltChecker(viewModel.settingPassword, viewModel.settingSalt)) {
-            textViewError.text = resources.getString(R.string.setting_decrypterror_message)
+        if (!validated) {
+            textViewError.text = resources.getString(R.string.setting_notvalidated_message)
             textViewError.postDelayed({ textViewError.text = "" }, 1500)
             textViewError.startAnimation(expand)
             return
@@ -120,21 +129,51 @@ class SettingActivity : AppCompatActivity() {
         }
     }
 
+    private fun check() {
+        val viewModel : SettingViewModel = binding?.viewModel!!
+        val theSafePath = ".blob"
+        val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[0]
+
+        if (!theSafeFolder.isDirectory || !theSafeFolder.isHidden || theSafeFolder.name != theSafePath) {
+            val textViewError = findViewById<TextView>(R.id.textview_error)
+            textViewError.text = resources.getString(R.string.setting_decrypterror_message)
+            textViewError.postDelayed({ textViewError.text = "" }, 1500)
+            textViewError.startAnimation(expand)
+            return
+        }
+        else {
+            val cryptoUtil = CryptoUtil(viewModel.settingPassword, viewModel.settingSalt)
+            val output = cryptoUtil.decrypt(theSafeFolder.listFiles()[0])
+            val fileExt = cryptoUtil.decipher(theSafeFolder.listFiles()[0].name).split('.')[1]
+            val testFile = File(theSafeFolder, "/testing.$fileExt")
+            testFile.writeBytes(output!!)
+
+            val imageView = findViewById<ImageView>(R.id.imageview_checkup)
+            imageView.setImageURI(Uri.fromFile(testFile))
+            imageView.postDelayed({
+                imageView.setImageResource(R.drawable.ic_no_encryption_background_24dp)
+                testFile.delete()
+            }, 3000)
+            validated = true
+        }
+    }
+
     override fun onEnterAnimationComplete() {
         super.onEnterAnimationComplete()
 
         if (!onCreated) return
         onCreated = false
-        val passField = findViewById<TextInputLayout>(R.id.decryp_password_field)
-        val saltField = findViewById<TextInputLayout>(R.id.decryp_salt_field)
-        passField.startAnimation(fadeIn)
-        saltField.startAnimation(fadeIn)
+        passField?.startAnimation(fadeIn)
+        saltField?.startAnimation(fadeIn)
     }
 
     private fun cancel() {
         goMain = true
         val intent = Intent(this@SettingActivity, MainActivity::class.java)
         startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@SettingActivity).toBundle())
+
+        //Todo les fiels disparaissent pas en synchro ... ptet avec ça ..
+        //this.overridePendingTransition(R.anim.abc_fade_in, R.anim.abc_fade_out)
     }
 
     private fun setAnimation() {
@@ -166,9 +205,7 @@ class SettingActivity : AppCompatActivity() {
         if (prefs?.firstLogin!!)
             finish()
         else {
-            goMain = true
-            val intent = Intent(this@SettingActivity, MainActivity::class.java)
-            startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@SettingActivity).toBundle())
+            cancel()
         }
     }
 
