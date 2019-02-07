@@ -13,24 +13,33 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.ListView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomappbar.BottomAppBar
 import androidx.appcompat.widget.SearchView
+import androidx.core.content.ContextCompat
+import java.io.File
 
 
 class MainActivity : AppCompatActivity() {
 
-    private var prefs : Prefs? = null
     private var isPaused : Boolean = true
     private var goSettings : Boolean = false
-    private var broadcastReceiver: BroadcastReceiver? = null
-    private var lockLayout : FrameLayout? = null
-    private var bottomBar : BottomAppBar? = null
+
+    private lateinit var lockLayout : FrameLayout
+    private lateinit var bottomBar : BottomAppBar
+    private lateinit var listView : ListView
+    private lateinit var prefs : Prefs
+    private lateinit var broadcastReceiver: BroadcastReceiver
+    private lateinit var decipheredNames : MutableList<String>
+    private lateinit var mapping : File
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
         setAnimation()
+
+        //region init
 
         broadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(arg0: Context, intent: Intent) {
@@ -46,6 +55,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         bottomBar = findViewById(R.id.bar)
         lockLayout = findViewById(R.id.layout_lock)
+        listView = findViewById(R.id.listview_main)
         val goSettings = findViewById<ImageView>(R.id.imageview_go_settings)
         goSettings.setOnClickListener {this.goSettings()}
 
@@ -53,6 +63,23 @@ class MainActivity : AppCompatActivity() {
         val editText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
         editText.setTextColor(resources.getColor(R.color.colorBackground))
         editText.setHintTextColor(resources.getColor(R.color.colorHint))
+
+        //endregion init
+        //region listview
+
+        val cryptoUtil = CryptoUtil(prefs.passwordDecryptHash, prefs.saltDecryptHash)
+        val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[0]
+        decipheredNames = mutableListOf()
+        for (file in theSafeFolder.listFiles()) {
+            if (cryptoUtil.decipher(file.name) == "mapping.json")
+                this.mapping = file
+
+            decipheredNames.add(cryptoUtil.decipher(file.name))
+        }
+        /* TODO : json the mapping:File and create objects out of it ! */
+        //jFolder -> jFile
+
+        //endregion listview
     }
 
     private fun setAnimation() {
@@ -89,8 +116,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (isPaused) {
-            lockLayout?.visibility = View.GONE
-            bottomBar?.visibility = View.VISIBLE
+            lockLayout.visibility = View.GONE
+            bottomBar.visibility = View.VISIBLE
             isPaused = false
             return
         }
@@ -108,8 +135,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         if (!goSettings) {
-            bottomBar?.visibility = View.GONE
-            lockLayout?.visibility = View.VISIBLE
+            bottomBar.visibility = View.GONE
+            lockLayout.visibility = View.VISIBLE
         }
         goSettings = false
         super.onPause()

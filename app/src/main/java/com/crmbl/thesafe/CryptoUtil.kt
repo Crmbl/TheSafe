@@ -40,25 +40,4 @@ data class CryptoUtil(
         cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(pass32, "SHA1PRNG"), IvParameterSpec(pass16))
         return cipher.doFinal(ins.readBytes())
     }
-
-//    fun saltChecker(input : ByteArray) : Boolean {
-//        try {
-//                val fileExt = decipher(theSafeFolder.listFiles()[0].name).split('.')[1]
-//                val outputFile = File(theSafeFolder, "/testing.$fileExt")
-//                outputFile.writeBytes(input)
-//
-//                if (URLConnection.guessContentTypeFromStream(outputFile.inputStream()) == fileExt) {
-//                    outputFile.delete()
-//                    return true
-//                }
-//
-//                outputFile.delete()
-//                return false
-//            }
-//
-//            return false
-//        } catch (ex: Exception) {
-//            return false
-//        }
-//    }
 }

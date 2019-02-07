@@ -172,7 +172,7 @@ class SettingActivity : AppCompatActivity() {
         val intent = Intent(this@SettingActivity, MainActivity::class.java)
         startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@SettingActivity).toBundle())
 
-        //Todo les fiels disparaissent pas en synchro ... ptet avec ça ..
+        /*Todo les fields disparaissent pas en synchro ... ptet avec ça ..*/
         //this.overridePendingTransition(R.anim.abc_fade_in, R.anim.abc_fade_out)
     }
 
