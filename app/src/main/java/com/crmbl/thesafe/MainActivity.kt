@@ -18,6 +18,11 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomappbar.BottomAppBar
 import androidx.appcompat.widget.SearchView
 import androidx.core.content.ContextCompat
+import com.beust.klaxon.Klaxon
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.io.File
 
 
@@ -25,14 +30,15 @@ class MainActivity : AppCompatActivity() {
 
     private var isPaused : Boolean = true
     private var goSettings : Boolean = false
+    private var mapping : Folder? = null
 
     private lateinit var lockLayout : FrameLayout
     private lateinit var bottomBar : BottomAppBar
     private lateinit var listView : ListView
+    private lateinit var chipGroup : ChipGroup
     private lateinit var prefs : Prefs
     private lateinit var broadcastReceiver: BroadcastReceiver
-    private lateinit var decipheredNames : MutableList<String>
-    private lateinit var mapping : File
+    private lateinit var cryptedMapping : File
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +62,7 @@ class MainActivity : AppCompatActivity() {
         bottomBar = findViewById(R.id.bar)
         lockLayout = findViewById(R.id.layout_lock)
         listView = findViewById(R.id.listview_main)
+        chipGroup = findViewById(R.id.chipgroup_folders)
         val goSettings = findViewById<ImageView>(R.id.imageview_go_settings)
         goSettings.setOnClickListener {this.goSettings()}
 
@@ -67,19 +74,42 @@ class MainActivity : AppCompatActivity() {
         //endregion init
         //region listview
 
-        val cryptoUtil = CryptoUtil(prefs.passwordDecryptHash, prefs.saltDecryptHash)
-        val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[0]
-        decipheredNames = mutableListOf()
-        for (file in theSafeFolder.listFiles()) {
-            if (cryptoUtil.decipher(file.name) == "mapping.json")
-                this.mapping = file
+        try{
+            val cryptoUtil = CryptoUtil(prefs.passwordDecryptHash, prefs.saltDecryptHash)
+            val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[1] //TODO change back to 0
+            for (file in theSafeFolder.listFiles()) {
+                if (cryptoUtil.decipher(file.name) == "mapping.json")
+                    cryptedMapping = file
+            }
 
-            decipheredNames.add(cryptoUtil.decipher(file.name))
+            decryptMappingFile(cryptoUtil.decrypt(cryptedMapping)!!)
         }
-        /* TODO : json the mapping:File and create objects out of it ! */
-        //jFolder -> jFile
+        catch(ex : Exception) { throw NotImplementedError("Dit not implement this, sorry, lazy") }
 
         //endregion listview
+    }
+
+    private fun decryptMappingFile(input : ByteArray) = GlobalScope.launch {
+        mapping = Klaxon().parse<Folder>(input.inputStream())
+
+        runOnUiThread {
+            for (folder in mapping?.folders!!) {
+                val chip = Chip(chipGroup.context)
+                chip.text = folder.name
+                chip.isClickable = true
+                chip.isCheckable = false
+                chip.elevation = 10f
+                chip.setOnClickListener{ c -> onChipClicked(c) }
+                chipGroup.addView(chip)
+            }
+        }
+    }
+
+    //TODO not called :(
+    private fun onChipClicked(chip : View) {
+        runOnUiThread {
+            chip.setBackgroundColor(resources.getColor(R.color.colorAccent, theme))
+        }
     }
 
     private fun setAnimation() {

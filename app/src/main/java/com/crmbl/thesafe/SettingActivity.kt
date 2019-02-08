@@ -95,6 +95,13 @@ class SettingActivity : AppCompatActivity() {
         cancelButton.setOnClickListener{this.cancel()}
         val checkButton = findViewById<MaterialButton>(R.id.check_decrypt_button)
         checkButton.setOnClickListener{this.check()}
+
+        //TODO remove this !!!!
+
+        binding?.viewModel?.settingSalt = "DJsW3hb95dqG3uQg"
+        binding?.viewModel?.settingPassword = "99aXHaxXC76qsWUa"
+
+        //////////////////////////
     }
 
     private fun save() {
@@ -131,17 +138,17 @@ class SettingActivity : AppCompatActivity() {
 
     private fun check() {
         val viewModel : SettingViewModel = binding?.viewModel!!
-        val theSafePath = ".blob"
-        val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[0]
+        val theSafePath = "blob" //TODO change back to .blob
+        val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[1] //TODO change back to 0
 
-        if (!theSafeFolder.isDirectory || !theSafeFolder.isHidden || theSafeFolder.name != theSafePath) {
-            val textViewError = findViewById<TextView>(R.id.textview_error)
-            textViewError.text = resources.getString(R.string.setting_decrypterror_message)
-            textViewError.postDelayed({ textViewError.text = "" }, 1500)
-            textViewError.startAnimation(expand)
-            return
-        }
-        else {
+//        if (!theSafeFolder.isDirectory || !theSafeFolder.isHidden || theSafeFolder.name != theSafePath) {
+//            val textViewError = findViewById<TextView>(R.id.textview_error)
+//            textViewError.text = resources.getString(R.string.setting_decrypterror_message)
+//            textViewError.postDelayed({ textViewError.text = "" }, 1500)
+//            textViewError.startAnimation(expand)
+//            return
+//        }
+//        else {
             val cryptoUtil = CryptoUtil(viewModel.settingPassword, viewModel.settingSalt)
             val output = cryptoUtil.decrypt(theSafeFolder.listFiles()[0])
             val fileExt = cryptoUtil.decipher(theSafeFolder.listFiles()[0].name).split('.')[1]
@@ -155,7 +162,7 @@ class SettingActivity : AppCompatActivity() {
                 testFile.delete()
             }, 3000)
             validated = true
-        }
+//        }
     }
 
     override fun onEnterAnimationComplete() {
