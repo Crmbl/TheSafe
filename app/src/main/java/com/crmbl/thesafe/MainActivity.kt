@@ -8,8 +8,11 @@ import android.content.IntentFilter
 import android.os.Bundle
 import android.transition.Fade
 import android.transition.Transition
+import android.util.TypedValue
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.Animation
+import android.view.animation.AnimationUtils
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -31,6 +34,9 @@ class MainActivity : AppCompatActivity() {
     private var isPaused : Boolean = true
     private var goSettings : Boolean = false
     private var mapping : Folder? = null
+    private var clickedChip : Chip? = null
+    private var actualFolder : Folder? = null
+    private var lastChip : Chip? = null
 
     private lateinit var lockLayout : FrameLayout
     private lateinit var bottomBar : BottomAppBar
@@ -68,15 +74,15 @@ class MainActivity : AppCompatActivity() {
 
         val searchView = findViewById<SearchView>(R.id.searchview)
         val editText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
-        editText.setTextColor(resources.getColor(R.color.colorBackground))
-        editText.setHintTextColor(resources.getColor(R.color.colorHint))
+        editText.setTextColor(resources.getColor(R.color.colorBackground, theme))
+        editText.setHintTextColor(resources.getColor(R.color.colorHint, theme))
 
         //endregion init
         //region listview
 
         try{
             val cryptoUtil = CryptoUtil(prefs.passwordDecryptHash, prefs.saltDecryptHash)
-            val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[1] //TODO change back to 0
+            val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[0]
             for (file in theSafeFolder.listFiles()) {
                 if (cryptoUtil.decipher(file.name) == "mapping.json")
                     cryptedMapping = file
@@ -84,32 +90,165 @@ class MainActivity : AppCompatActivity() {
 
             decryptMappingFile(cryptoUtil.decrypt(cryptedMapping)!!)
         }
-        catch(ex : Exception) { throw NotImplementedError("Dit not implement this, sorry, lazy") }
+        catch(ex : Exception) {  throw Exception("Did not implement this, sorry: ${ex.message}") }
 
         //endregion listview
     }
 
     private fun decryptMappingFile(input : ByteArray) = GlobalScope.launch {
         mapping = Klaxon().parse<Folder>(input.inputStream())
+        actualFolder = mapping!!
+        writeParent(mapping!!)
+        createChips(mapping!!)
 
+        //testDecrypt()
+    }
+
+    private fun trim(bytes: ByteArray): ByteArray {
+        var i = bytes.size - 1
+        while (i >= 0 && bytes[i].toInt() == 0) {
+            --i
+        }
+
+        return bytes.copyOf(i + 1)
+    }
+
+//    private fun testDecrypt() {
+//        try{
+//            val cryptoUtil = CryptoUtil(prefs.passwordDecryptHash, prefs.saltDecryptHash)
+//            val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[0]
+//            for (file in theSafeFolder.listFiles()) {
+//                if (cryptoUtil.decipher(file.name) != "mapping.json") {
+//                    cryptedMapping = file
+//                    break
+//                }
+//            }
+//
+//            decryptMappingFile(cryptoUtil.decrypt(cryptedMapping)!!)
+//            var adapter = ItemAdapter(this, )
+//            listView.
+//        }
+//        catch(ex : Exception) { throw NotImplementedError("Did not implement this, sorry, lazy") }
+//    }
+
+    private fun writeParent(parentFolder : Folder) {
+        for (folder in parentFolder.folders) {
+            folder.previous = parentFolder
+            writeParent(folder)
+        }
+    }
+
+    private fun createChips(originFolder : Folder) {
         runOnUiThread {
-            for (folder in mapping?.folders!!) {
+            var isOriginFolder = false
+            if (originFolder != mapping) {
+                isOriginFolder = true
                 val chip = Chip(chipGroup.context)
+                chip.id = originFolder.folders.count()
+                chip.chipIcon = resources.getDrawable(R.drawable.ic_chevron_left_white_24dp, theme)
+                chip.setChipBackgroundColorResource(R.color.colorAccent)
+                chip.maxWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
+                chip.chipStartPadding = 0f
+                chip.iconStartPadding = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 7f, resources.displayMetrics)
+                chip.isCloseIconVisible = false
+                chip.isClickable = true
+                chip.isCheckable = false
+                chip.isCheckedIconVisible = false
+                chip.elevation = 5f
+                chip.alpha = 0f
+                chip.setOnClickListener { goUp() }
+                chipGroup.addView(chip)
+                val fadeIn = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_in_no_delay)
+                fadeIn.setAnimationListener(object : RefAnimationListener(chip) {
+                    override fun onAnimationRepeat(animation: Animation?) {}
+                    override fun onAnimationStart(animation: Animation?) {}
+                    override fun onAnimationEnd(animation: Animation?) { this.view.alpha = 1f }
+                })
+                chip.startAnimation(fadeIn)
+            }
+
+            for ((i, folder) in originFolder.folders.withIndex()) {
+                val chip = Chip(chipGroup.context)
+                chip.id = i
                 chip.text = folder.name
                 chip.isClickable = true
                 chip.isCheckable = false
-                chip.elevation = 10f
-                chip.setOnClickListener{ c -> onChipClicked(c) }
+                chip.isCheckedIconVisible = false
+                chip.elevation = 5f
+                chip.setOnClickListener { v -> goDown(v as Chip) }
+                chip.alpha = 0f
                 chipGroup.addView(chip)
+                val fadeIn = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_in_no_delay)
+                fadeIn.setAnimationListener(object : RefAnimationListener(chip) {
+                    override fun onAnimationRepeat(animation: Animation?) {}
+                    override fun onAnimationStart(animation: Animation?) {}
+                    override fun onAnimationEnd(animation: Animation?) { this.view.alpha = 1f }
+                })
+                chip.postDelayed({ chip.startAnimation(fadeIn) }, if (isOriginFolder && i == 0) {50L} else {i * 50L})
             }
         }
     }
 
-    //TODO not called :(
-    private fun onChipClicked(chip : View) {
-        runOnUiThread {
-            chip.setBackgroundColor(resources.getColor(R.color.colorAccent, theme))
+    private fun goDown(_clickedChip : Chip) {
+        this.clickedChip = _clickedChip
+
+        for (i in 0..chipGroup.childCount) {
+            val chip : Chip = chipGroup.findViewById(i) ?: return
+            val fadeOut = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_out)
+            fadeOut.setAnimationListener(object : RefAnimationListener(chip) {
+                override fun onAnimationRepeat(animation: Animation?) {}
+                override fun onAnimationStart(animation: Animation?) {}
+                override fun onAnimationEnd(animation: Animation?) {
+                    this.view.visibility = View.INVISIBLE
+                    if (this.view as Chip == lastChip)
+                        navigate(true)
+                }
+            })
+            chip.postDelayed({ chip.startAnimation(fadeOut) }, i * 50L)
+
+            if (i == chipGroup.childCount -1)
+                lastChip = chip
         }
+    }
+
+    private fun goUp() {
+        for (i in 0..chipGroup.childCount) {
+            val chip : Chip = chipGroup.findViewById(i) ?: return
+            val fadeOut = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_out)
+            fadeOut.setAnimationListener(object : RefAnimationListener(chip) {
+                override fun onAnimationRepeat(animation: Animation?) {}
+                override fun onAnimationStart(animation: Animation?) {}
+                override fun onAnimationEnd(animation: Animation?) {
+                    this.view.visibility = View.INVISIBLE
+                    if (this.view as Chip == lastChip)
+                        navigate(false)
+                }
+            })
+            chip.postDelayed({ chip.startAnimation(fadeOut) }, i * 50L)
+
+            if (i == chipGroup.childCount -1)
+                lastChip = chip
+        }
+    }
+
+    private fun navigate(direction : Boolean) {
+        chipGroup.removeAllViews()
+        if (direction) {
+            actualFolder = findFolder(clickedChip?.text)!!
+            createChips(actualFolder!!)
+        } else {
+            actualFolder = actualFolder?.previous?.copy()
+            createChips(actualFolder!!)
+        }
+    }
+
+    private fun findFolder(text : CharSequence?) : Folder? {
+        for (folder in actualFolder?.folders!!) {
+            if (folder.name == text)
+                return folder
+        }
+
+        throw NotImplementedError("Oups error :( , did not find a folder with name : $text in ${actualFolder?.name}")
     }
 
     private fun setAnimation() {

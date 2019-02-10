@@ -4,5 +4,32 @@
               android:layout_width="match_parent"
               android:layout_height="match_parent">
 
+        <ImageView android:id="@+id/imageView"
+                android:layout_gravity="top"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="0.92"/>
 
+        <LinearLayout android:layout_gravity="bottom"
+                android:layout_width="match_parent"
+                android:layout_weight="0.08"
+                android:orientation="horizontal"
+                android:layout_height="0dp"
+                android:background="@color/colorAccent"
+                android:padding="10dp">
+
+            <TextView android:id="@+id/textview_title"
+                    android:layout_width="360dp"
+                      android:text="TEST titre"
+                    android:layout_height="match_parent"
+                    android:textStyle="bold"
+                    android:gravity="center_vertical"
+                    android:textSize="17sp"/>
+
+            <ImageView
+                    android:layout_gravity="center_vertical"
+                    android:src="@drawable/ic_image_white_24dp"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"/>
+        </LinearLayout>
 </LinearLayout>

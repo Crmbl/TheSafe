@@ -22,25 +22,34 @@
                 android:layout_gravity="center"/>
     </FrameLayout>
 
-    <com.google.android.material.chip.ChipGroup
-            android:id="@+id/chipgroup_folders"
+    <HorizontalScrollView
+            android:background="@color/colorBackground"
+            android:layout_gravity="top"
             android:layout_width="match_parent"
-            android:layout_margin="5dp"
-            app:singleSelection="true"
-            app:singleLine="true"
-            android:layout_height="wrap_content">
+            android:layout_height="42dp"
+            android:scrollbarAlwaysDrawHorizontalTrack="false">
 
-    </com.google.android.material.chip.ChipGroup>
+        <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipgroup_folders"
+                android:layout_width="wrap_content"
+                android:layout_margin="5dp"
+                app:singleSelection="true"
+                app:chipSpacingHorizontal="5dp"
+                app:singleLine="true"
+                android:layout_height="wrap_content"/>
+    </HorizontalScrollView>
 
     <ListView android:id="@+id/listview_main"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
+              android:layout_gravity="center"
+              android:layout_marginTop="42dp"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"/>
 
     <com.google.android.material.bottomappbar.BottomAppBar
             android:id="@+id/bar"
+            android:layout_gravity="bottom"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
             app:hideOnScroll="true"
             android:backgroundTint="@color/colorPrimaryDark"
             style="@style/Widget.MaterialComponents.BottomAppBar"
@@ -52,18 +61,18 @@
                 android:layout_height="wrap_content">
 
             <androidx.appcompat.widget.SearchView android:id="@+id/searchview"
-                    style="@style/SearchViewTheme"
-                    android:layout_width="0dp"
-                    android:layout_height="40dp"
-                    android:paddingStart="-2dp"
-                    android:paddingEnd="0dp"
-                    app:iconifiedByDefault="false"
-                    android:elevation="0dp"
-                    app:closeIcon="@drawable/ic_close_accent_24dp"
-                    app:searchIcon="@drawable/ic_search_background_24dp"
-                    app:queryBackground="@android:color/transparent"
-                    app:queryHint="@string/searchview_hint_text"
-                    android:layout_weight="0.9"/>
+                  style="@style/SearchViewTheme"
+                  android:layout_width="0dp"
+                  android:layout_height="40dp"
+                  android:paddingStart="-2dp"
+                  android:paddingEnd="0dp"
+                  app:iconifiedByDefault="false"
+                  android:elevation="0dp"
+                  app:closeIcon="@drawable/ic_close_accent_24dp"
+                  app:searchIcon="@drawable/ic_search_background_24dp"
+                  app:queryBackground="@android:color/transparent"
+                  app:queryHint="@string/searchview_hint_text"
+                  android:layout_weight="0.9"/>
 
             <androidx.appcompat.widget.AppCompatImageView
                     android:id="@+id/imageview_go_settings"
