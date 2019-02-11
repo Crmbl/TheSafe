@@ -32,12 +32,38 @@ data class CryptoUtil(
 
     fun decrypt(inputFile : File) : ByteArray? {
         val ins: InputStream = inputFile.inputStream()
-        val password = PasswordDeriveBytes(_password, _salt.toByteArray(), "SHA1", 2)
+        val password = PasswordDeriveBytes(_password, _salt.toByteArray(Charsets.US_ASCII), "SHA1", 2)
         val pass32: ByteArray = password.GetBytes(32)
         val pass16: ByteArray = password.GetBytes(16)
 
-        val cipher = Cipher.getInstance("AES/CBC/NoPadding ")
+        val cipher = Cipher.getInstance("AES/CBC/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(pass32, "SHA1PRNG"), IvParameterSpec(pass16))
-        return cipher.doFinal(ins.readBytes())
+
+        var test1 = ByteArray(4)
+        var read = ins.read(test1, 0 , 4)
+        var test2 = ByteArray(toInt32(test1, 0))
+        return cipher.doFinal(inputFile.readBytes(), 0, test2.size)
+
+//        var test2 = ByteArray(0xff and test1[0].toInt() shl 32 or
+//                (0xff and test1[1].toInt() shl 40) or
+//                (0xff and test1[2].toInt() shl 48) or
+//                (0xff and test1[3].toInt() shl 56))
+//        return cipher.doFinal(test2, 0, test2.size)
+//
+        val input : ByteArray = ins.readBytes()
+        val inputLength = toInt32(input, 0)
+        //return cipher.doFinal(input, 0, inputLength)
+        return cipher.doFinal(input, 0, inputLength)
+    }
+
+    @Throws(Exception::class)
+     fun toInt32(bytes:ByteArray, index:Int):Int  {
+//        if (bytes.size != 4)
+//            throw Exception("The length of the byte array must be at least 4 bytes long.")
+
+        return ((0xff and bytes[index].toInt()) shl 32 or (
+                (0xff and bytes[index + 1].toInt()) shl 40) or (
+                (0xff and bytes[index + 2].toInt()) shl 48) or (
+                (0xff and bytes[index + 3].toInt()) shl 56))
     }
 }

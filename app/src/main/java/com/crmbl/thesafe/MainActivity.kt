@@ -90,46 +90,21 @@ class MainActivity : AppCompatActivity() {
 
             decryptMappingFile(cryptoUtil.decrypt(cryptedMapping)!!)
         }
-        catch(ex : Exception) {  throw Exception("Did not implement this, sorry: ${ex.message}") }
+        catch(ex : Exception) { throw Exception("Error: ${ex.message}") }
 
         //endregion listview
     }
 
     private fun decryptMappingFile(input : ByteArray) = GlobalScope.launch {
+        val t = ContextCompat.getExternalFilesDirs(applicationContext, null)[1].listFiles()[0].listFiles()[0]
+        val test = File(t, "/mapping.json")
+        test.writeBytes(input)
+
         mapping = Klaxon().parse<Folder>(input.inputStream())
         actualFolder = mapping!!
         writeParent(mapping!!)
         createChips(mapping!!)
-
-        //testDecrypt()
     }
-
-    private fun trim(bytes: ByteArray): ByteArray {
-        var i = bytes.size - 1
-        while (i >= 0 && bytes[i].toInt() == 0) {
-            --i
-        }
-
-        return bytes.copyOf(i + 1)
-    }
-
-//    private fun testDecrypt() {
-//        try{
-//            val cryptoUtil = CryptoUtil(prefs.passwordDecryptHash, prefs.saltDecryptHash)
-//            val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[0]
-//            for (file in theSafeFolder.listFiles()) {
-//                if (cryptoUtil.decipher(file.name) != "mapping.json") {
-//                    cryptedMapping = file
-//                    break
-//                }
-//            }
-//
-//            decryptMappingFile(cryptoUtil.decrypt(cryptedMapping)!!)
-//            var adapter = ItemAdapter(this, )
-//            listView.
-//        }
-//        catch(ex : Exception) { throw NotImplementedError("Did not implement this, sorry, lazy") }
-//    }
 
     private fun writeParent(parentFolder : Folder) {
         for (folder in parentFolder.folders) {
