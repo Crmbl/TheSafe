@@ -25,22 +25,26 @@ import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import com.google.android.material.textfield.TextInputLayout
 import java.io.File
+import java.util.*
+import kotlin.concurrent.schedule
 
 
 class SettingActivity : AppCompatActivity() {
 
-    private var prefs : Prefs? = null
-    private var binding : ActivitySettingBinding? = null
     private var isPaused : Boolean = true
     private var onCreated : Boolean = true
-    private var fadeIn : Animation? = null
     private var expand : Animation? = null
     private var broadcastReceiver: BroadcastReceiver? = null
     private var lockLayout : FrameLayout? = null
-    private var passField : TextInputLayout? = null
-    private var saltField : TextInputLayout? = null
     private var goMain : Boolean = false
     private var validated : Boolean = false
+
+    private lateinit var binding : ActivitySettingBinding
+    private lateinit var prefs : Prefs
+    private lateinit var passField : TextInputLayout
+    private lateinit var saltField : TextInputLayout
+    private lateinit var fadeIn : Animation
+    private lateinit var fadeOut : Animation
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,50 +67,60 @@ class SettingActivity : AppCompatActivity() {
         lockLayout = findViewById(R.id.layout_lock)
         passField = findViewById(R.id.decryp_password_field)
         saltField = findViewById(R.id.decryp_salt_field)
-        passField?.visibility = View.GONE
-        saltField?.visibility = View.GONE
+        passField.visibility = View.GONE
+        saltField.visibility = View.GONE
 
-        if (prefs?.firstLogin!!) {
-            binding?.viewModel = SettingViewModel()
+        if (prefs.firstLogin) {
+            binding.viewModel = SettingViewModel()
         }
         else {
-            binding?.viewModel = SettingViewModel(
-                prefs?.rememberUsername!!,
-                prefs?.useFingerprint!!,
-                prefs?.saltDecryptHash!!,
-                prefs?.passwordDecryptHash!!,
-                prefs?.firstLogin!!)
+            binding.viewModel = SettingViewModel(
+                prefs.rememberUsername,
+                prefs.useFingerprint,
+                prefs.saltDecryptHash,
+                prefs.passwordDecryptHash,
+                prefs.firstLogin)
         }
 
         expand = AnimationUtils.loadAnimation(applicationContext, R.anim.expand)
         fadeIn = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_in)
-        fadeIn?.setAnimationListener(object : Animation.AnimationListener {
+        fadeIn.setAnimationListener(object : Animation.AnimationListener {
             override fun onAnimationRepeat(p0: Animation?) {}
             override fun onAnimationEnd(p0: Animation?) {}
             override fun onAnimationStart(p0: Animation?) {
-                passField?.visibility = View.VISIBLE
-                saltField?.visibility = View.VISIBLE
+                passField.visibility = View.VISIBLE
+                saltField.visibility = View.VISIBLE
+            }
+        })
+
+        fadeOut = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_out)
+        fadeOut.setAnimationListener(object : Animation.AnimationListener {
+            override fun onAnimationRepeat(p0: Animation?) {}
+            override fun onAnimationStart(p0: Animation?) {}
+            override fun onAnimationEnd(p0: Animation?) {
+                passField.visibility = View.INVISIBLE
+                saltField.visibility = View.INVISIBLE
             }
         })
 
         val saveButton = findViewById<MaterialButton>(R.id.setting_button_save)
         saveButton.setOnClickListener{this.save()}
         val cancelButton = findViewById<MaterialButton>(R.id.setting_button_cancel)
-        cancelButton.setOnClickListener{this.cancel()}
+        cancelButton.setOnClickListener{this.goMainActivity()}
         val checkButton = findViewById<MaterialButton>(R.id.check_decrypt_button)
         checkButton.setOnClickListener{this.check()}
 
         //TODO remove this !!!!
 
-        binding?.viewModel?.settingSalt = "DJsW3hb95dqG3uQg"
-        binding?.viewModel?.settingPassword = "99aXHaxXC76qsWUa"
+        binding.viewModel?.settingSalt = "DJsW3hb95dqG3uQg"
+        binding.viewModel?.settingPassword = "99aXHaxXC76qsWUa"
 
         //////////////////////////
     }
 
     private fun save() {
         val textViewError = findViewById<TextView>(R.id.textview_error)
-        val viewModel : SettingViewModel = binding?.viewModel!!
+        val viewModel : SettingViewModel = binding.viewModel!!
         if (viewModel.settingPassword.isBlank() || viewModel.settingSalt.isBlank()) {
             textViewError.text = resources.getString(R.string.setting_error_message)
             textViewError.postDelayed({ textViewError.text = "" }, 1500)
@@ -121,23 +135,21 @@ class SettingActivity : AppCompatActivity() {
         }
         else {
             textViewError.text = ""
-            prefs?.saltDecryptHash = viewModel.settingSalt
-            prefs?.passwordDecryptHash = viewModel.settingPassword
-            prefs?.useFingerprint = viewModel.settingUseFingerprint
-            prefs?.rememberUsername = viewModel.settingRememberUsername
-            if (prefs?.firstLogin!!) {
-                prefs?.firstLogin = false
-                prefs?.username = intent.getStringExtra("username")
+            prefs.saltDecryptHash = viewModel.settingSalt
+            prefs.passwordDecryptHash = viewModel.settingPassword
+            prefs.useFingerprint = viewModel.settingUseFingerprint
+            prefs.rememberUsername = viewModel.settingRememberUsername
+            if (prefs.firstLogin) {
+                prefs.firstLogin = false
+                prefs.username = intent.getStringExtra("username")
             }
 
-            goMain = true
-            val intent = Intent(this@SettingActivity, MainActivity::class.java)
-            startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@SettingActivity).toBundle())
+            goMainActivity()
         }
     }
 
     private fun check() {
-        val viewModel : SettingViewModel = binding?.viewModel!!
+        val viewModel : SettingViewModel = binding.viewModel!!
         val theSafePath = ".blob"
         val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[0]
 
@@ -150,8 +162,8 @@ class SettingActivity : AppCompatActivity() {
         }
         else {
             val cryptoUtil = CryptoUtil(viewModel.settingPassword, viewModel.settingSalt)
-            val output = cryptoUtil.decrypt(theSafeFolder.listFiles()[0])
-            val fileExt = cryptoUtil.decipher(theSafeFolder.listFiles()[0].name).split('.')[1]
+            val output = cryptoUtil.decrypt(theSafeFolder.listFiles()[1])
+            val fileExt = cryptoUtil.decipher(theSafeFolder.listFiles()[1].name).split('.')[1]
             val testFile = File(theSafeFolder, "/testing.$fileExt")
             testFile.writeBytes(output!!)
 
@@ -170,17 +182,21 @@ class SettingActivity : AppCompatActivity() {
 
         if (!onCreated) return
         onCreated = false
-        passField?.startAnimation(fadeIn)
-        saltField?.startAnimation(fadeIn)
+        passField.startAnimation(fadeIn)
+        saltField.startAnimation(fadeIn)
     }
 
-    private fun cancel() {
+    private fun goMainActivity() {
         goMain = true
-        val intent = Intent(this@SettingActivity, MainActivity::class.java)
-        startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@SettingActivity).toBundle())
 
-        /*Todo les fields disparaissent pas en synchro ... ptet avec ça ..*/
-        //this.overridePendingTransition(R.anim.abc_fade_in, R.anim.abc_fade_out)
+        passField.startAnimation(fadeOut)
+        saltField.startAnimation(fadeOut)
+        Timer("SettingUp", false).schedule(75) {
+            runOnUiThread {
+                val intent = Intent(this@SettingActivity, MainActivity::class.java)
+                startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@SettingActivity).toBundle())
+            }
+        }
     }
 
     private fun setAnimation() {
@@ -209,10 +225,10 @@ class SettingActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (prefs?.firstLogin!!)
+        if (prefs.firstLogin)
             finish()
         else {
-            cancel()
+            goMainActivity()
         }
     }
 

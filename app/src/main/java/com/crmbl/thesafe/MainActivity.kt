@@ -96,10 +96,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun decryptMappingFile(input : ByteArray) = GlobalScope.launch {
-        val t = ContextCompat.getExternalFilesDirs(applicationContext, null)[1].listFiles()[0].listFiles()[0]
-        val test = File(t, "/mapping.json")
-        test.writeBytes(input)
-
         mapping = Klaxon().parse<Folder>(input.inputStream())
         actualFolder = mapping!!
         writeParent(mapping!!)
