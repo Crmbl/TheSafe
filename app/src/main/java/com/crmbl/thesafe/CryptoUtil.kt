@@ -13,14 +13,14 @@ data class CryptoUtil(
     private var _salt : String
 ) {
 
-    fun encipher(input : String, key : Int) : String {
+    private fun encipher(input : String, key : Int) : String {
         var output = ""
         for(character : Char in input) {
-            if (!character.isLetter())
-                output += character
-            else {
+            output += if (!character.isLetter()) {
+                character
+            } else {
                 val tmp : Char = if (character.isUpperCase()) {'A'} else {'a'}
-                output += ((character + key - tmp) % 26 + tmp.toInt()).toChar()
+                ((character + key - tmp) % 26 + tmp.toInt()).toChar()
             }
         }
 
@@ -42,18 +42,9 @@ data class CryptoUtil(
             fileIn.read(tmpByte, 0 , 4)
             cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(pass32, "SHA1PRNG"), IvParameterSpec(pass16))
 
-            //TODO fix this, not working for gif file for instance, working for json...
             CipherInputStream(fileIn, cipher).use { cipherIn ->
-                InputStreamReader(cipherIn).use { inputReader ->
-                    BufferedReader(inputReader, toInt32(tmpByte, 0)).use { reader ->
-                        val sb = StringBuilder()
-                        reader.forEachLine {
-                            l -> sb.append(l)
-                        }
-
-                        val t = sb.toString()
-                        return t.toByteArray(Charsets.UTF_8)
-                    }
+                ByteArrayInputStream(cipherIn.readBytes(), 0, toInt32(tmpByte, 0)).use { byteStream ->
+                    return byteStream.readBytes()
                 }
             }
         }

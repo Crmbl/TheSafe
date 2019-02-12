@@ -33,12 +33,12 @@ class SettingActivity : AppCompatActivity() {
 
     private var isPaused : Boolean = true
     private var onCreated : Boolean = true
-    private var expand : Animation? = null
-    private var broadcastReceiver: BroadcastReceiver? = null
-    private var lockLayout : FrameLayout? = null
     private var goMain : Boolean = false
     private var validated : Boolean = false
 
+    private lateinit var lockLayout : FrameLayout
+    private lateinit var expand : Animation
+    private lateinit var broadcastReceiver: BroadcastReceiver
     private lateinit var binding : ActivitySettingBinding
     private lateinit var prefs : Prefs
     private lateinit var passField : TextInputLayout
@@ -111,10 +111,8 @@ class SettingActivity : AppCompatActivity() {
         checkButton.setOnClickListener{this.check()}
 
         //TODO remove this !!!!
-
         binding.viewModel?.settingSalt = "DJsW3hb95dqG3uQg"
         binding.viewModel?.settingPassword = "99aXHaxXC76qsWUa"
-
         //////////////////////////
     }
 
@@ -150,10 +148,9 @@ class SettingActivity : AppCompatActivity() {
 
     private fun check() {
         val viewModel : SettingViewModel = binding.viewModel!!
-        val theSafePath = ".blob"
         val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[0]
 
-        if (!theSafeFolder.isDirectory || !theSafeFolder.isHidden || theSafeFolder.name != theSafePath) {
+        if (!theSafeFolder.isDirectory || !theSafeFolder.isHidden || theSafeFolder.name != ".blob") {
             val textViewError = findViewById<TextView>(R.id.textview_error)
             textViewError.text = resources.getString(R.string.setting_decrypterror_message)
             textViewError.postDelayed({ textViewError.text = "" }, 1500)
@@ -162,18 +159,34 @@ class SettingActivity : AppCompatActivity() {
         }
         else {
             val cryptoUtil = CryptoUtil(viewModel.settingPassword, viewModel.settingSalt)
-            val output = cryptoUtil.decrypt(theSafeFolder.listFiles()[1])
-            val fileExt = cryptoUtil.decipher(theSafeFolder.listFiles()[1].name).split('.')[1]
-            val testFile = File(theSafeFolder, "/testing.$fileExt")
-            testFile.writeBytes(output!!)
+            var fileToTest : File? = null
+            var fileExt = ""
+            for (file in theSafeFolder.listFiles()) {
+                fileExt = cryptoUtil.decipher(file.name).split('.')[1]
+                if (fileExt == "jpg" || fileExt == "gif" || fileExt == "png") {
+                    fileToTest = file
+                    break
+                }
+            }
+            if (fileToTest == null) {
+                val textViewError = findViewById<TextView>(R.id.textview_error)
+                textViewError.text = resources.getString(R.string.setting_decrypterror_no_file_message)
+                textViewError.postDelayed({ textViewError.text = "" }, 1500)
+                textViewError.startAnimation(expand)
+                return
+            } else {
+                val output = cryptoUtil.decrypt(fileToTest)
+                val testFile = File(theSafeFolder, "/testing.$fileExt")
+                testFile.writeBytes(output!!)
 
-            val imageView = findViewById<ImageView>(R.id.imageview_checkup)
-            imageView.setImageURI(Uri.fromFile(testFile))
-            imageView.postDelayed({
-                imageView.setImageResource(R.drawable.ic_no_encryption_background_24dp)
-                testFile.delete()
-            }, 3000)
-            validated = true
+                val imageView = findViewById<ImageView>(R.id.imageview_checkup)
+                imageView.setImageURI(Uri.fromFile(testFile))
+                imageView.postDelayed({
+                    imageView.setImageResource(R.drawable.ic_no_encryption_background_24dp)
+                    testFile.delete()
+                }, 3000)
+                validated = true
+            }
         }
     }
 
@@ -239,7 +252,7 @@ class SettingActivity : AppCompatActivity() {
 
     override fun onPause() {
         if (!goMain)
-            lockLayout?.visibility = View.VISIBLE
+            lockLayout.visibility = View.VISIBLE
         goMain = false
         super.onPause()
     }
@@ -247,7 +260,7 @@ class SettingActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (isPaused) {
-            lockLayout?.visibility = View.GONE
+            lockLayout.visibility = View.GONE
             isPaused = false
             return
         }

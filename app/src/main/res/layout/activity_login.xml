@@ -23,16 +23,20 @@
 
         <LinearLayout android:id="@+id/buttons_layout"
                 android:layout_below="@id/logo_layout"
-                android:paddingHorizontal="20dp"
-                android:paddingVertical="43dp"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingTop="43dp"
+                android:paddingBottom="43dp"
                 android:orientation="vertical"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
 
             <com.google.android.material.button.MaterialButton
                     android:id="@+id/login_button_text"
-                    android:layout_marginVertical="5dp"
-                    android:layout_marginHorizontal="50dp"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginBottom="5dp"
+                    android:layout_marginStart="50dp"
+                    android:layout_marginEnd="50dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     app:icon="@drawable/ic_text_fields_white_24dp"
@@ -40,8 +44,10 @@
             <com.google.android.material.button.MaterialButton
                     android:enabled="@{viewModel.finger}"
                     android:id="@+id/login_button_finger"
-                    android:layout_marginVertical="5dp"
-                    android:layout_marginHorizontal="50dp"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginBottom="5dp"
+                    android:layout_marginStart="50dp"
+                    android:layout_marginEnd="50dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     app:icon="@drawable/ic_fingerprint_white_24dp"
@@ -50,7 +56,8 @@
 
         <com.google.android.material.card.MaterialCardView android:id="@+id/login_card"
                 android:layout_alignTop="@id/buttons_layout"
-                android:layout_marginHorizontal="20dp"
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="20dp"
                 android:visibility="invisible"
                 android:layout_width="match_parent"
                 android:layout_height="195dp"
@@ -63,6 +70,7 @@
                     android:orientation="vertical"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:focusable="true"
                     android:clickable="true">
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -129,6 +137,7 @@
                     android:orientation="vertical"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
+                    android:focusable="true"
                     android:clickable="true">
 
                 <ImageView android:id="@+id/imageview_fingerprint"
@@ -136,6 +145,7 @@
                         android:layout_width="48dp"
                         android:layout_weight="0.9"
                         android:layout_height="0dp"
+                        android:contentDescription="@string/fingerprint_help"
                         android:src="@drawable/ic_fingerprint_white_24dp"/>
 
                 <LinearLayout

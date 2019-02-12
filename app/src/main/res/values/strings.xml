@@ -7,7 +7,7 @@
     <string name="login_field_password">Password</string>
     <string name="login_button_password">password</string>
     <string name="login_button_fingerprint">fingerprint</string>
-    <string name="login_button_cancel">cancel</string>
+    <string name="login_button_cancel">Cancel</string>
     <string name="setting_field_salt">Salt</string>
     <string name="setting_field_title">Settings</string>
     <string name="setting_field_password">Password</string>
@@ -18,10 +18,11 @@
     <string name="setting_button_save">save</string>
     <string name="setting_error_message">please, fill the fields with a *</string>
     <string name="setting_decrypterror_message">the base folder is missing</string>
+    <string name="setting_decrypterror_no_file_message">no file to test, needs gif/jpg/png</string>
     <string name="fingerprint_help">too fast, try again</string>
     <string name="app_bar_menu_search">search</string>
     <string name="lock_image">lock_image</string>
-    <string name="searchview_hint_text">Search...</string>
+    <string name="searchview_hint_text">Search…</string>
     <string name="verify_decryption_password_salt">Verify decryption password/salt *</string>
     <string name="setting_notvalidated_message">please, test the decryption</string>
     <string name="verify">VERIFY</string>

@@ -35,23 +35,24 @@ import javax.crypto.SecretKey
 
 class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
 
-    var prefs : Prefs? = null
-    var binding : ActivityLoginBinding? = null
-    private var loginCard : MaterialCardView? = null
+    lateinit var prefs : Prefs
+    lateinit var binding : ActivityLoginBinding
+
+    private lateinit var loginCard : MaterialCardView
+    private lateinit var slideUp : Animation
+    private lateinit var slideDown : Animation
+    private lateinit var shake : Animation
+    private lateinit var expand : Animation
+    private lateinit var expandXY : Animation
+    private lateinit var slideLogin : Animation
+    private lateinit var broadcastReceiver: BroadcastReceiver
 
     private var isOpen : Boolean = false
-    private var slideUp : Animation? = null
-    private var slideDown : Animation? = null
-    private var shake : Animation? = null
-    private var expand : Animation? = null
-    private var expandXY : Animation? = null
-    private var slideLogin : Animation? = null
     private var rememberUsername : Boolean = false
-    private var broadcastReceiver: BroadcastReceiver? = null
     private var cryptoObject: FingerprintManagerCompat.CryptoObject? = null
     private var keyStore: KeyStore? = null
     private var keyGenerator: KeyGenerator? = null
-    private var keyName = "safe_key"
+    private val keyName = "safe_key"
     private val controller: FingerprintController by lazy {
         FingerprintController(FingerprintManagerCompat.from(applicationContext), this)
     }
@@ -75,28 +76,29 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
 
         this.prefs = Prefs(this)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_login)
-        rememberUsername = prefs?.rememberUsername!!
-        val useFingerprint = prefs?.useFingerprint!!
+        rememberUsername = prefs.rememberUsername
+        val useFingerprint = prefs.useFingerprint
         if (rememberUsername)
-            binding?.viewModel = LoginViewModel(prefs?.username!!, "", "",false, useFingerprint)
+            binding.viewModel = LoginViewModel(prefs.username, "", "",false, useFingerprint)
         else
-            binding?.viewModel = LoginViewModel("", "", "", false, useFingerprint)
+            binding.viewModel = LoginViewModel("", "", "", false, useFingerprint)
 
         //endregion
         //region init views
 
-        loginCard = findViewById(R.id.login_card)
         val loginButtonCancel = findViewById<MaterialButton>(R.id.login_button_cancel)
         val loginButtonText = findViewById<MaterialButton>(R.id.login_button_text)
         val loginButtonFinger = findViewById<MaterialButton>(R.id.login_button_finger)
         val loginButtonCancelF = findViewById<MaterialButton>(R.id.login_button_cancel_fingerprint)
         val loginButtonGo = findViewById<MaterialButton>(R.id.login_button_go)
+
+        loginCard = findViewById(R.id.login_card)
         slideUp = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_up)
         slideDown = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_down)
         shake = AnimationUtils.loadAnimation(applicationContext, R.anim.shake)
         slideLogin = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_down)
-        slideLogin?.interpolator = AccelerateInterpolator()
-        slideLogin?.startOffset = 100
+        slideLogin.interpolator = AccelerateInterpolator()
+        slideLogin.startOffset = 100
 
         //endregion
         //region init listeners
@@ -107,26 +109,26 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
         loginButtonCancelF.setOnClickListener{this.hideLoginCard(true)}
         loginButtonGo.setOnClickListener{this.login()}
 
-        slideUp?.setAnimationListener(object : Animation.AnimationListener {
+        slideUp.setAnimationListener(object : Animation.AnimationListener {
             override fun onAnimationRepeat(animation: Animation?) {}
             override fun onAnimationEnd(animation: Animation?) {
                 handleFingerprint()
             }
             override fun onAnimationStart(animation: Animation?) {
                 isOpen = true
-                loginCard?.visibility = View.VISIBLE
+                loginCard.visibility = View.VISIBLE
                 if (rememberUsername)
-                    binding?.viewModel?.username = prefs?.username!!
+                    binding.viewModel?.username = prefs.username
                 else
-                    binding?.viewModel?.username = ""
-                binding?.viewModel?.password = ""
+                    binding.viewModel?.username = ""
+                binding.viewModel?.password = ""
             }
         })
 
-        slideDown?.setAnimationListener(object : Animation.AnimationListener {
+        slideDown.setAnimationListener(object : Animation.AnimationListener {
             override fun onAnimationEnd(animation: Animation?) {
                 isOpen = false
-                loginCard?.visibility = View.INVISIBLE
+                loginCard.visibility = View.INVISIBLE
             }
             //region not used
             override fun onAnimationRepeat(animation: Animation?) {}
@@ -134,10 +136,10 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
             //endregion
         })
 
-        slideLogin?.setAnimationListener(object : Animation.AnimationListener {
+        slideLogin.setAnimationListener(object : Animation.AnimationListener {
             override fun onAnimationEnd(p0: Animation?) {
                 isOpen = false
-                loginCard?.visibility = View.INVISIBLE
+                loginCard.visibility = View.INVISIBLE
                 handleLogin()
             }
             //region not used
@@ -196,17 +198,17 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
     override fun onSuccess() {
         val fingerPrintIcon = findViewById<ImageView>(R.id.imageview_fingerprint)
         fingerPrintIcon.startAnimation(expandXY)
-        loginCard?.startAnimation(slideLogin)
+        loginCard.startAnimation(slideLogin)
     }
 
     override fun onError() {
-        loginCard?.startAnimation(shake)
+        loginCard.startAnimation(shake)
     }
 
     override fun onHelp() {
         val textFinger = findViewById<TextView>(R.id.textview_finger)
-        binding?.viewModel?.fingerMessage = resources.getString(R.string.fingerprint_help)
-        textFinger.postDelayed({ binding?.viewModel?.fingerMessage = "" }, 1500)
+        binding.viewModel?.fingerMessage = resources.getString(R.string.fingerprint_help)
+        textFinger.postDelayed({ binding.viewModel?.fingerMessage = "" }, 1500)
         textFinger.startAnimation(expand)
     }
 
@@ -215,28 +217,28 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
     private fun showLoginCard(value : Boolean) {
         if (isOpen) return
 
-        binding?.viewModel?.isUsingFingerprint = value
-        loginCard?.startAnimation(slideUp)
+        binding.viewModel?.isUsingFingerprint = value
+        loginCard.startAnimation(slideUp)
     }
 
     private fun hideLoginCard(value : Boolean) {
-        binding?.viewModel?.isUsingFingerprint = value
-        loginCard?.startAnimation(slideDown)
+        binding.viewModel?.isUsingFingerprint = value
+        loginCard.startAnimation(slideDown)
         controller.stopListening()
     }
 
     private fun login() {
-        val username = binding?.viewModel?.username
-        val password = binding?.viewModel?.password
+        val username = binding.viewModel?.username
+        val password = binding.viewModel?.password
         if (username.isNullOrBlank() || password.isNullOrBlank()) { // Error handling
-            loginCard?.startAnimation(shake)
+            loginCard.startAnimation(shake)
         }
 
-        if (prefs?.usernameHash == StringUtil().md5(username!!) && prefs?.passwordHash == StringUtil().md5(password!!)) {
-            loginCard?.startAnimation(slideLogin)
+        if (prefs.usernameHash == StringUtil().md5(username!!) && prefs.passwordHash == StringUtil().md5(password!!)) {
+            loginCard.startAnimation(slideLogin)
         }
         else {
-            loginCard?.startAnimation(shake)
+            loginCard.startAnimation(shake)
         }
     }
 
@@ -244,12 +246,12 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
     private fun handleLogin() {
         val previousActivity = intent.getStringExtra("previous")
         if (previousActivity.isNullOrBlank()) {
-            val intent : Intent = if (prefs?.firstLogin!!) {
+            val intent : Intent = if (prefs.firstLogin) {
                 Intent(this@LoginActivity, SettingActivity::class.java)
             } else {
                 Intent(this@LoginActivity, MainActivity::class.java)
             }
-            intent.putExtra("username", binding?.viewModel?.username)
+            intent.putExtra("username", binding.viewModel?.username)
             startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@LoginActivity).toBundle())
         }
         else {
@@ -259,7 +261,7 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
     }
 
     private fun handleFingerprint() {
-        if (!isOpen || !binding?.viewModel?.isUsingFingerprint!!) return
+        if (!isOpen || !binding.viewModel?.isUsingFingerprint!!) return
         cryptoObject?.let { controller.startListening(it) }
     }
 
