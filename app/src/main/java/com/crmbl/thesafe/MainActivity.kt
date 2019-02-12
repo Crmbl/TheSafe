@@ -255,6 +255,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+
         if (isPaused) {
             lockLayout.visibility = View.GONE
             bottomBar.visibility = View.VISIBLE
