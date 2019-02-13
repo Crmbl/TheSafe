@@ -1,5 +1,6 @@
 package com.crmbl.thesafe
 
+import android.annotation.SuppressLint
 import android.app.ActivityOptions
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -9,18 +10,17 @@ import android.os.Bundle
 import android.transition.Fade
 import android.transition.Transition
 import android.util.TypedValue
+import android.view.MotionEvent
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
-import android.widget.EditText
-import android.widget.FrameLayout
-import android.widget.ImageView
-import android.widget.ListView
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomappbar.BottomAppBar
 import androidx.appcompat.widget.SearchView
 import androidx.core.content.ContextCompat
+import androidx.core.view.MotionEventCompat
 import com.beust.klaxon.Klaxon
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
@@ -46,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var broadcastReceiver: BroadcastReceiver
     private lateinit var cryptedMapping : File
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
@@ -65,10 +66,32 @@ class MainActivity : AppCompatActivity() {
 
         prefs = Prefs(this)
         setContentView(R.layout.activity_main)
+
         bottomBar = findViewById(R.id.bar)
         lockLayout = findViewById(R.id.layout_lock)
-        listView = findViewById(R.id.listview_main)
         chipGroup = findViewById(R.id.chipgroup_folders)
+        listView = findViewById(R.id.listview_main)
+        listView.setOnTouchListener(object : View.OnTouchListener {
+            var initialY : Float = 0f
+            var finalY : Float = 0f
+
+            @Suppress("DEPRECATION")
+            override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+                val action : Int = MotionEventCompat.getActionMasked(event)
+                when (action) {
+                    MotionEvent.ACTION_DOWN -> initialY = event?.y!!
+                    MotionEvent.ACTION_UP -> {
+                        finalY = event?.y!!
+
+                        if (initialY < finalY)
+                            scrollingUp()
+                        else if (initialY > finalY)
+                            scrollingDown()
+                    }
+                }
+                return false
+            }
+        })
         val goSettings = findViewById<ImageView>(R.id.imageview_go_settings)
         goSettings.setOnClickListener {this.goSettings()}
 
@@ -100,6 +123,68 @@ class MainActivity : AppCompatActivity() {
         actualFolder = mapping!!
         writeParent(mapping!!)
         createChips(mapping!!)
+        beginDecrypt()
+    }
+
+    //Todo improve this stuff
+    private fun beginDecrypt() {
+        val test = actualFolder?.files!!
+        test.add(actualFolder?.files?.first()!!)
+
+        runOnUiThread {
+            val adapter = ItemAdapter(this, actualFolder?.files!!)
+            listView.adapter = adapter
+        }
+    }
+
+    private fun scrollingUp() {
+        val scrollView = findViewById<HorizontalScrollView>(R.id.scrollView_chipgroup)
+        val slideUp = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_up_bottombar)
+        slideUp.setAnimationListener(object : Animation.AnimationListener { //region useless stuff
+            override fun onAnimationRepeat(animation: Animation?) {}
+            override fun onAnimationStart(animation: Animation?) {} //endregion
+            override fun onAnimationEnd(animation: Animation?) {
+                bottomBar.visibility = View.VISIBLE
+            }
+        })
+        val slideDown = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_down_topbar)
+        slideDown.setAnimationListener(object : Animation.AnimationListener { //region useless stuff
+            override fun onAnimationRepeat(animation: Animation?) {}
+            override fun onAnimationStart(animation: Animation?) {} //endregion
+            override fun onAnimationEnd(animation: Animation?) {
+                scrollView.visibility = View.VISIBLE
+            }
+        })
+
+        if (bottomBar.visibility == View.INVISIBLE && scrollView.visibility == View.INVISIBLE) {
+            bottomBar.startAnimation(slideUp)
+            scrollView.startAnimation(slideDown)
+        }
+    }
+
+    private fun scrollingDown() {
+        val scrollView = findViewById<HorizontalScrollView>(R.id.scrollView_chipgroup)
+        val slideUp = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_up_topbar)
+        slideUp.setAnimationListener(object : Animation.AnimationListener { //region useless stuff
+            override fun onAnimationRepeat(animation: Animation?) {}
+            override fun onAnimationStart(animation: Animation?) {} //endregions
+            override fun onAnimationEnd(animation: Animation?) {
+                scrollView.visibility = View.INVISIBLE
+            }
+        })
+        val slideDown = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_down_bottombar)
+        slideDown.setAnimationListener(object : Animation.AnimationListener { //region useless stuff
+            override fun onAnimationRepeat(animation: Animation?) {}
+            override fun onAnimationStart(animation: Animation?) {} //endregion
+            override fun onAnimationEnd(animation: Animation?) {
+                bottomBar.visibility = View.INVISIBLE
+            }
+        })
+
+        if (bottomBar.visibility == View.VISIBLE && scrollView.visibility == View.VISIBLE) {
+            bottomBar.startAnimation(slideDown)
+            scrollView.startAnimation(slideUp)
+        }
     }
 
     private fun writeParent(parentFolder : Folder) {
@@ -141,6 +226,8 @@ class MainActivity : AppCompatActivity() {
             for ((i, folder) in originFolder.folders.withIndex()) {
                 val chip = Chip(chipGroup.context)
                 chip.id = i
+                chip.setChipBackgroundColorResource(R.color.colorHintAccent)
+                chip.setTextColor(resources.getColor(R.color.colorBackground, theme))
                 chip.text = folder.name
                 chip.isClickable = true
                 chip.isCheckable = false

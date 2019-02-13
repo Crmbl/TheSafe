@@ -26,7 +26,7 @@
                 android:paddingStart="20dp"
                 android:paddingEnd="20dp"
                 android:paddingTop="43dp"
-                android:paddingBottom="123dp"
+                android:paddingBottom="83dp"
                 android:orientation="vertical"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
@@ -61,7 +61,7 @@
                     android:id="@+id/login_card"
                     android:layout_gravity="center_horizontal"
                     android:visibility="invisible"
-                    android:layout_width="340dp"
+                    android:layout_width="320dp"
                     android:layout_height="195dp"
                     app:cardCornerRadius="5dp"
                     app:cardElevation="2dp">

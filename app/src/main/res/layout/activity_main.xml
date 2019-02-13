@@ -22,18 +22,19 @@
                 android:layout_gravity="center"/>
     </FrameLayout>
 
-    <HorizontalScrollView
-            android:background="@color/colorBackground"
+    <HorizontalScrollView android:id="@+id/scrollView_chipgroup"
             android:layout_gravity="top"
             android:layout_width="match_parent"
             android:layout_height="42dp"
-            android:layout_marginTop="5dp"
-            android:layout_marginBottom="5dp"
             android:scrollbars="none"
+            android:focusable="true"
+            android:clickable="true"
+            android:elevation="5dp"
             android:scrollbarAlwaysDrawHorizontalTrack="false">
 
         <com.google.android.material.chip.ChipGroup
                 android:id="@+id/chipgroup_folders"
+                android:layout_gravity="center_vertical"
                 android:layout_width="wrap_content"
                 app:singleSelection="true"
                 app:chipSpacingHorizontal="5dp"
@@ -43,7 +44,8 @@
 
     <ListView android:id="@+id/listview_main"
               android:layout_gravity="center"
-              android:layout_marginTop="42dp"
+              android:dividerHeight="0dp"
+              android:divider="@null"
               android:layout_width="match_parent"
               android:layout_height="match_parent"/>
 
