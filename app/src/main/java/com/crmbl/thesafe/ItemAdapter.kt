@@ -6,8 +6,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
-import android.widget.ImageView
 import android.widget.TextView
+import android.widget.ProgressBar
+import com.github.ybq.android.spinkit.style.CubeGrid
+
 
 class ItemAdapter(_context : Context, private val dataSource : MutableList<File>) : BaseAdapter() {
     private val inflater : LayoutInflater = _context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
@@ -15,7 +17,6 @@ class ItemAdapter(_context : Context, private val dataSource : MutableList<File>
     @SuppressLint("ViewHolder")
     override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
         val rowView = inflater.inflate(R.layout.list_item, parent, false)
-        val imageView = rowView.findViewById<ImageView>(R.id.imageView)
         val titleView = rowView.findViewById<TextView>(R.id.textview_title)
         val extensionView = rowView.findViewById<TextView>(R.id.textview_ext)
 
@@ -23,7 +24,10 @@ class ItemAdapter(_context : Context, private val dataSource : MutableList<File>
         val splitedName = file.originName.split('.')
         titleView.text = splitedName[0]
         extensionView.text = splitedName[1]
-        //imageView.setImageURI(file.)
+        file.position = position
+        val progressBar = rowView.findViewById(R.id.spin_kit) as ProgressBar
+        progressBar.visibility = View.VISIBLE
+        progressBar.indeterminateDrawable = CubeGrid()
 
         return rowView
     }
