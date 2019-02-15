@@ -1,53 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-                xmlns:app="http://schemas.android.com/apk/res-auto"
                 android:orientation="vertical"
                 android:layout_width="match_parent"
-                android:layout_height="575dp">
+                android:layout_height="wrap_content">
 
-    <!--TODO adapt view size-->
-        <ImageView android:id="@+id/imageView"
-                android:contentDescription="@string/image"
-                android:layout_gravity="top"
-                android:layout_width="match_parent"
-                android:layout_height="531dp"
-                android:background="#000"/>
+    <ImageView android:id="@+id/imageView"
+            android:contentDescription="@string/image"
+            android:layout_gravity="top"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:adjustViewBounds="true"
+            android:scaleType="fitStart"
+            android:background="#000"/>
 
-        <com.github.ybq.android.spinkit.SpinKitView
-                android:visibility="invisible"
-                android:layout_centerInParent="true"
-                android:paddingBottom="44dp"
-                android:id="@+id/spin_kit"
-                style="@style/SpinKitView.CubeGrid"
-                android:layout_width="wrap_content"
+    <LinearLayout android:id="@+id/bottom_layout"
+            android:layout_alignParentBottom="true"
+            android:layout_width="match_parent"
+            android:orientation="horizontal"
+            android:layout_height="wrap_content"
+            android:background="@color/colorBackground"
+            android:padding="10dp">
+
+        <TextView android:id="@+id/textview_title"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:background="@android:color/transparent"
-                app:SpinKit_Color="@color/colorAccent" />
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:textColor="@color/colorHintAccent"
+                android:gravity="center_vertical"
+                android:textSize="17sp"/>
 
-        <LinearLayout android:layout_alignParentBottom="true"
-                android:layout_width="match_parent"
-                android:orientation="horizontal"
-                android:layout_height="wrap_content"
-                android:background="@color/colorBackground"
-                android:padding="10dp">
-
-            <TextView android:id="@+id/textview_title"
-                    android:layout_height="wrap_content"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:textColor="@color/colorHintAccent"
-                    android:gravity="center_vertical"
-                    android:textSize="17sp"/>
-
-            <TextView android:id="@+id/textview_ext"
-                      android:layout_height="wrap_content"
-                      android:layout_width="wrap_content"
-                      android:textAllCaps="true"
-                      android:textAlignment="viewEnd"
-                      android:layout_gravity="end|center_vertical"
-                      android:textColor="@color/colorAccent"
-                      android:textStyle="bold"
-                      android:textSize="12sp"/>
-        </LinearLayout>
+        <TextView android:id="@+id/textview_ext"
+                  android:layout_height="wrap_content"
+                  android:layout_width="wrap_content"
+                  android:textAllCaps="true"
+                  android:textAlignment="viewEnd"
+                  android:layout_gravity="end|center_vertical"
+                  android:textColor="@color/colorAccent"
+                  android:textStyle="bold"
+                  android:textSize="12sp"/>
+    </LinearLayout>
 </RelativeLayout>

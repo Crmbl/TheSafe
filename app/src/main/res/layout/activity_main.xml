@@ -51,12 +51,24 @@
               android:layout_width="match_parent"
               android:layout_height="match_parent"/>
 
-    <ProgressBar android:id="@+id/progress_bar"
-            android:layout_gravity="center"
+    <!--<ProgressBar android:id="@+id/progress_bar"-->
+            <!--android:layout_gravity="center"-->
+            <!--android:visibility="invisible"-->
+            <!--android:indeterminate="true"-->
+            <!--android:layout_width="wrap_content"-->
+            <!--android:layout_height="wrap_content"/>-->
+
+    <com.github.ybq.android.spinkit.SpinKitView
+            android:id="@+id/progress_bar"
             android:visibility="invisible"
-            android:indeterminate="true"
+            android:layout_centerInParent="true"
+            style="@style/SpinKitView.CubeGrid"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:paddingBottom="56dp"
+            android:background="@android:color/transparent"
+            app:SpinKit_Color="@color/colorAccent" />
 
     <com.google.android.material.bottomappbar.BottomAppBar
             android:id="@+id/bar"

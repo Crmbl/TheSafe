@@ -6,7 +6,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.transition.Fade
 import android.transition.Transition
@@ -23,6 +22,7 @@ import androidx.appcompat.widget.SearchView
 import androidx.core.content.ContextCompat
 import androidx.core.view.MotionEventCompat
 import com.beust.klaxon.Klaxon
+import com.github.ybq.android.spinkit.style.CubeGrid
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import kotlinx.coroutines.GlobalScope
@@ -71,6 +71,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         progressBar = findViewById(R.id.progress_bar)
+        progressBar.indeterminateDrawable = CubeGrid()
         progressBar.visibility = View.VISIBLE
         bottomBar = findViewById(R.id.bar)
         lockLayout = findViewById(R.id.layout_lock)
@@ -125,41 +126,41 @@ class MainActivity : AppCompatActivity() {
 
     private fun decryptMappingFile(input : ByteArray) = GlobalScope.launch {
         mapping = Klaxon().parse<Folder>(input.inputStream())
-        actualFolder = mapping!!
         writeParent(mapping!!)
 
-        createChips(mapping!!)
+        actualFolder = mapping!!
         decryptFiles()
-
-        runOnUiThread {
-            progressBar.visibility = View.GONE
-            val adapter = ItemAdapter(this@MainActivity, actualFolder?.files!!)
-            listView.adapter = adapter
-        }
     }
 
     private fun decryptFiles() = GlobalScope.launch {
+        createChips(actualFolder!!)
         val theSafeFolder = ContextCompat.getExternalFilesDirs(applicationContext, null)[1].listFiles()[0].listFiles()[0]
         for (file in actualFolder?.files!!) {
             for (realFile in theSafeFolder.listFiles()) {
                 if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
                     file.decrypted = cryptoUtil.decrypt(realFile)
-                    updateView(file)
                 }
             }
         }
-    }
 
-    private fun updateView(file : com.crmbl.thesafe.File) {
         runOnUiThread {
-            val view : View = listView.getChildAt(file.position)
-            val progressBar = view.findViewById(R.id.spin_kit) as ProgressBar
-            progressBar.visibility = View.GONE
-            val imageView : ImageView = view.findViewById(R.id.imageView)
-            val bitMap = BitmapFactory.decodeByteArray(file.decrypted, 0, file.decrypted?.size!!)
-            imageView.setImageBitmap(bitMap)
+            if (progressBar.visibility != View.GONE)
+                progressBar.visibility = View.GONE
+            val adapter = ItemAdapter(this@MainActivity, actualFolder?.files!!)
+            listView.adapter = adapter
         }
     }
+
+//    private fun updateView(file : com.crmbl.thesafe.File) {
+//        runOnUiThread {
+//            val view : View = listView.getChildAt(file.position)
+//            val progressBar = view.findViewById(R.id.spin_kit) as ProgressBar
+//            progressBar.visibility = View.GONE
+//            val imageView : ImageView = view.findViewById(R.id.imageView)
+//            val bitMap = BitmapFactory.decodeByteArray(file.decrypted, 0, file.decrypted?.size!!)
+//            imageView.setImageBitmap(bitMap)
+//        }
+//    }
 
     private fun createChips(originFolder : Folder) = GlobalScope.launch {
         runOnUiThread {
