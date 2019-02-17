@@ -27,4 +27,6 @@
     <string name="setting_notvalidated_message">please, test the decryption</string>
     <string name="verify">VERIFY</string>
     <string name="image">image</string>
+    <string name="no_result_listview">no result listview</string>
+    <string name="nothing_here">Nothing here…</string>
 </resources>

@@ -51,13 +51,6 @@
               android:layout_width="match_parent"
               android:layout_height="match_parent"/>
 
-    <!--<ProgressBar android:id="@+id/progress_bar"-->
-            <!--android:layout_gravity="center"-->
-            <!--android:visibility="invisible"-->
-            <!--android:indeterminate="true"-->
-            <!--android:layout_width="wrap_content"-->
-            <!--android:layout_height="wrap_content"/>-->
-
     <com.github.ybq.android.spinkit.SpinKitView
             android:id="@+id/progress_bar"
             android:visibility="invisible"
@@ -69,6 +62,37 @@
             android:paddingBottom="56dp"
             android:background="@android:color/transparent"
             app:SpinKit_Color="@color/colorAccent" />
+
+    <LinearLayout android:id="@+id/linearLayout_no_result"
+            android:orientation="vertical"
+            android:layout_gravity="center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="invisible"
+            android:paddingBottom="56dp">
+
+        <ImageView
+                   android:contentDescription="@string/no_result_listview"
+                   android:layout_width="match_parent"
+                   android:layout_height="wrap_content"
+                   android:src="@drawable/ic_smoking_rooms_hint_64dp"
+                   android:layout_gravity="center_horizontal"/>
+        <TextView android:text="@string/nothing_here"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/colorError"
+                android:textAllCaps="true"
+                android:textStyle="bold"
+                android:textSize="17sp"/>
+
+    </LinearLayout>
+
+    <include android:id="@+id/listview_loaditemlayout"
+             android:layout_width="match_parent"
+             android:layout_height="wrap_content"
+             android:layout_gravity="bottom"
+             layout="@layout/list_item_footer"
+             android:visibility="invisible" />
 
     <com.google.android.material.bottomappbar.BottomAppBar
             android:id="@+id/bar"

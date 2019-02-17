@@ -3,15 +3,12 @@ package com.crmbl.thesafe
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.BitmapFactory
-import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.widget.*
-import android.util.DisplayMetrics
-
-
 
 
 class ItemAdapter(_context : Context, private val dataSource : MutableList<File>) : BaseAdapter() {
@@ -21,48 +18,59 @@ class ItemAdapter(_context : Context, private val dataSource : MutableList<File>
     @SuppressLint("ViewHolder")
     override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
         val rowView = inflater.inflate(R.layout.list_item, parent, false)
+        rowView.alpha = 0f
         val titleView = rowView.findViewById<TextView>(R.id.textview_title)
         val extensionView = rowView.findViewById<TextView>(R.id.textview_ext)
-//        val imageView : ImageView = rowView.findViewById(R.id.imageView)
-//        val bottomLayout : LinearLayout = rowView.findViewById(R.id.bottom_layout)
+        val imageView : ImageView = rowView.findViewById(R.id.imageView)
 
         val file = getItem(position) as File
         val splitedName = file.originName.split('.')
+        val bitMap = BitmapFactory.decodeByteArray(file.decrypted, 0, file.decrypted?.size!!)
+
         titleView.text = splitedName[0]
         extensionView.text = splitedName[1]
         file.position = position
-
-        val imageView : ImageView = rowView.findViewById(R.id.imageView)
-        val bitMap = BitmapFactory.decodeByteArray(file.decrypted, 0, file.decrypted?.size!!)
         imageView.setImageBitmap(bitMap)
-        Log.d("BitmapSize", "${bitMap.width} && ${bitMap.height}")
 
-        //rowView.viewTreeObserver.addOnGlobalLayoutListener { drawShiiiit(rowView, position, bitMap.width) }
-//        val params = rowView.layoutParams
-//        Log.d("INFO", "ImageView Height : ${imageView.height} | BottomLayout Height : ${bottomLayout.height}")
-//        params.height = imageView.measuredHeight - bottomLayout.measuredHeight
-//        rowView.layoutParams = params
-
-        return rowView
-    }
-
-    private fun drawShiiiit(view : View, position : Int, bitmapWidth : Int) {
-        if (position == 0) {
-            //TODO add margin for chipgroup to be "visible"
-//            val params = rowView.layoutParams as AbsListView.LayoutParams
-//            params. = TypedValue.COMPLEX_UNIT_DIP * 50
-//            rowView.layoutParams = params
+        if (file.height != 0) {
+            if (position == 0) {
+                val params = imageView.layoutParams as RelativeLayout.LayoutParams
+                val offset = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 42f, context.resources.displayMetrics).toInt()
+                params.topMargin = offset
+                imageView.layoutParams = params
+            }
+            imageView.minimumHeight = file.height
+            rowView.minimumHeight = file.totalHeight
         }
 
-        val imageView : ImageView = view.findViewById(R.id.imageView)
+        rowView.viewTreeObserver.addOnPreDrawListener (object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                val linearLayout : LinearLayout = rowView.findViewById(R.id.bottom_layout)
+                if (rowView.minimumHeight == 0 && imageView.minimumHeight == 0 && file.height == 0) {
+                    if (position == 0) {
+                        val params = imageView.layoutParams as RelativeLayout.LayoutParams
+                        val offset = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 42f, context.resources.displayMetrics).toInt()
+                        params.topMargin = offset
+                        imageView.layoutParams = params
+                        imageView.minimumHeight = imageView.height + offset
+                        rowView.minimumHeight = imageView.height + linearLayout.height + offset
+                    } else {
+                        rowView.minimumHeight = imageView.height + linearLayout.height
+                        imageView.minimumHeight = imageView.height
+                    }
 
-        val metrics = context.resources.displayMetrics
-        val delta : Float = imageView.width.toFloat() / bitmapWidth.toFloat()
-        //val delta2 = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, imageView.width.toFloat(), metrics) / TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, bitmapWidth.toFloat(), metrics)
+                    file.height = imageView.minimumHeight
+                    file.totalHeight = rowView.minimumHeight
+                }
 
-        Log.d("Testing", "${imageView.width} && $delta | ${imageView.height} && ${imageView.minimumHeight}")
-        if (imageView.minimumHeight == imageView.height) return
-        imageView.minimumHeight = imageView.height * delta.toInt()
+                return true
+            }
+        })
+
+        rowView.animate().alpha(1f).setDuration(125).withEndAction {
+            rowView.alpha = 1f
+        }.start()
+        return rowView
     }
 
     override fun getItem(position: Int): Any {

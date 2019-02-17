@@ -32,16 +32,24 @@ import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
+    private val loadLimit : Int = 5
+
+    private var loadedFiles : Int = 0
     private var isPaused : Boolean = true
     private var goSettings : Boolean = false
+    private var userScrolled : Boolean = false
     private var mapping : Folder? = null
     private var clickedChip : Chip? = null
     private var actualFolder : Folder? = null
+    private var files : MutableList<com.crmbl.thesafe.File>? = null
     private var lastChip : Chip? = null
+    private var adapter : ItemAdapter? = null
 
     private lateinit var lockLayout : FrameLayout
+    private lateinit var emptyLayout : LinearLayout
     private lateinit var progressBar : ProgressBar
     private lateinit var bottomBar : BottomAppBar
+    private lateinit var addMoreLayout : LinearLayout
     private lateinit var listView : ListView
     private lateinit var chipGroup : ChipGroup
     private lateinit var prefs : Prefs
@@ -74,7 +82,9 @@ class MainActivity : AppCompatActivity() {
         progressBar.indeterminateDrawable = CubeGrid()
         progressBar.visibility = View.VISIBLE
         bottomBar = findViewById(R.id.bar)
+        addMoreLayout = findViewById(R.id.listview_loaditemlayout)
         lockLayout = findViewById(R.id.layout_lock)
+        emptyLayout = findViewById(R.id.linearLayout_no_result)
         chipGroup = findViewById(R.id.chipgroup_folders)
         listView = findViewById(R.id.listview_main)
         listView.setOnTouchListener(object : View.OnTouchListener {
@@ -90,12 +100,26 @@ class MainActivity : AppCompatActivity() {
                         finalY = event?.y!!
 
                         if (initialY < finalY)
-                            scrollingUp()
+                            showUi()
                         else if (initialY > finalY)
-                            scrollingDown()
+                            hideUi()
                     }
                 }
                 return false
+            }
+        })
+
+        listView.setOnScrollListener(object : AbsListView.OnScrollListener {
+            override fun onScrollStateChanged(view: AbsListView?, scrollState: Int) {
+                if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_TOUCH_SCROLL) {
+                    userScrolled = true
+                }
+            }
+            override fun onScroll(view: AbsListView?, firstVisibleItem: Int, visibleItemCount: Int, totalItemCount: Int) {
+                if (userScrolled && firstVisibleItem + visibleItemCount == totalItemCount) {
+                    userScrolled = false
+                    updateListView()
+                }
             }
         })
         val goSettings = findViewById<ImageView>(R.id.imageview_go_settings)
@@ -107,7 +131,7 @@ class MainActivity : AppCompatActivity() {
         editText.setHintTextColor(resources.getColor(R.color.colorHint, theme))
 
         //endregion init
-        //region listview
+        //region mapping decrypt
 
         try{
             cryptoUtil = CryptoUtil(prefs.passwordDecryptHash, prefs.saltDecryptHash)
@@ -121,13 +145,12 @@ class MainActivity : AppCompatActivity() {
         }
         catch(ex : Exception) { throw Exception("Error: ${ex.message}") }
 
-        //endregion listview
+        //endregion mapping decrypt
     }
 
     private fun decryptMappingFile(input : ByteArray) = GlobalScope.launch {
         mapping = Klaxon().parse<Folder>(input.inputStream())
         writeParent(mapping!!)
-
         actualFolder = mapping!!
         decryptFiles()
     }
@@ -135,32 +158,71 @@ class MainActivity : AppCompatActivity() {
     private fun decryptFiles() = GlobalScope.launch {
         createChips(actualFolder!!)
         val theSafeFolder = ContextCompat.getExternalFilesDirs(applicationContext, null)[1].listFiles()[0].listFiles()[0]
-        for (file in actualFolder?.files!!) {
+
+        for ((i, file) in actualFolder?.files?.withIndex()!!) {
+            if (i == loadLimit) break
             for (realFile in theSafeFolder.listFiles()) {
                 if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
                     file.decrypted = cryptoUtil.decrypt(realFile)
+                    loadedFiles++
                 }
             }
         }
 
         runOnUiThread {
-            if (progressBar.visibility != View.GONE)
-                progressBar.visibility = View.GONE
-            val adapter = ItemAdapter(this@MainActivity, actualFolder?.files!!)
+            if (progressBar.visibility != View.GONE) {
+                progressBar.animate().alpha(0f).setDuration(125).withEndAction{
+                    progressBar.visibility = View.GONE
+                    progressBar.alpha = 1f
+
+                    if (listView.visibility != View.VISIBLE) {
+                        listView.visibility = View.VISIBLE
+                    }
+                }.start()
+            }
+
+            files = if (actualFolder?.files?.count() == 0)
+                        actualFolder?.files!!.toMutableList()
+                    else
+                        actualFolder?.files?.take(loadedFiles)!!.toMutableList()
+            adapter = ItemAdapter(this@MainActivity, files!!)
             listView.adapter = adapter
+            if (actualFolder?.files?.count() == 0) {
+                emptyLayout.alpha = 0f
+                emptyLayout.visibility = View.VISIBLE
+                emptyLayout.animate().alpha(1f).setDuration(125).withEndAction{
+                    emptyLayout.alpha = 1f
+                }.start()
+            }
+            else
+                showUi()
         }
     }
 
-//    private fun updateView(file : com.crmbl.thesafe.File) {
-//        runOnUiThread {
-//            val view : View = listView.getChildAt(file.position)
-//            val progressBar = view.findViewById(R.id.spin_kit) as ProgressBar
-//            progressBar.visibility = View.GONE
-//            val imageView : ImageView = view.findViewById(R.id.imageView)
-//            val bitMap = BitmapFactory.decodeByteArray(file.decrypted, 0, file.decrypted?.size!!)
-//            imageView.setImageBitmap(bitMap)
-//        }
-//    }
+    private fun updateListView() {
+        if (loadedFiles != actualFolder?.files?.count()) {
+            addMoreLayout.alpha = 0f
+            addMoreLayout.visibility = View.VISIBLE
+            addMoreLayout.animate().alpha(1f).setDuration(250).withEndAction{
+                addMoreLayout.postDelayed ({
+                    val theSafeFolder = ContextCompat.getExternalFilesDirs(applicationContext, null)[1].listFiles()[0].listFiles()[0]
+                    for ((i, file) in actualFolder?.files?.drop(loadedFiles)?.withIndex()!!) {
+                        if (i == loadLimit) break
+                        for (realFile in theSafeFolder.listFiles()) {
+                            if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
+                                file.decrypted = cryptoUtil.decrypt(realFile)
+                                loadedFiles++
+                                files?.add(file)
+                            }
+                        }
+                    }
+
+                    adapter?.notifyDataSetChanged()
+                    addMoreLayout.visibility = View.GONE
+                }, 500)
+            }.start()
+        }
+    }
 
     private fun createChips(originFolder : Folder) = GlobalScope.launch {
         runOnUiThread {
@@ -215,7 +277,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun scrollingUp() {
+    private fun showUi() {
         val scrollView = findViewById<HorizontalScrollView>(R.id.scrollView_chipgroup)
         val slideUp = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_up_bottombar)
         slideUp.setAnimationListener(object : Animation.AnimationListener { //region useless stuff
@@ -234,14 +296,13 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        if (mapping != null && actualFolder?.files?.count()!! > 1
-            && bottomBar.visibility == View.INVISIBLE && scrollView.visibility == View.INVISIBLE) {
+        if (mapping != null && bottomBar.visibility == View.INVISIBLE && scrollView.visibility == View.INVISIBLE) {
             bottomBar.startAnimation(slideUp)
             scrollView.startAnimation(slideDown)
         }
     }
 
-    private fun scrollingDown() {
+    private fun hideUi() {
         val scrollView = findViewById<HorizontalScrollView>(R.id.scrollView_chipgroup)
         val slideUp = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_up_topbar)
         slideUp.setAnimationListener(object : Animation.AnimationListener { //region useless stuff
@@ -260,7 +321,8 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        if (mapping != null && actualFolder?.files?.count()!! > 1
+        if (loadedFiles == 0) return
+        if (mapping != null && listView.getChildAt(listView.lastVisiblePosition - listView.firstVisiblePosition).bottom > listView.height
             && bottomBar.visibility == View.VISIBLE && scrollView.visibility == View.VISIBLE) {
             bottomBar.startAnimation(slideDown)
             scrollView.startAnimation(slideUp)
@@ -297,34 +359,53 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun goUp() {
-        for (i in 0..chipGroup.childCount) {
-            val chip : Chip = chipGroup.findViewById(i) ?: return
-            val fadeOut = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_out)
-            fadeOut.setAnimationListener(object : RefAnimationListener(chip) {
-                override fun onAnimationRepeat(animation: Animation?) {}
-                override fun onAnimationStart(animation: Animation?) {}
-                override fun onAnimationEnd(animation: Animation?) {
-                    this.view.visibility = View.INVISIBLE
-                    if (this.view as Chip == lastChip)
-                        navigate(false)
-                }
-            })
-            chip.postDelayed({ chip.startAnimation(fadeOut) }, i * 50L)
+        val scrollView = findViewById<HorizontalScrollView>(R.id.scrollView_chipgroup)
+        if (scrollView.visibility != View.VISIBLE) {
+            navigate(false)
+        } else {
+            for (i in 0..chipGroup.childCount) {
+                val chip : Chip = chipGroup.findViewById(i) ?: return
+                val fadeOut = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_out)
+                fadeOut.setAnimationListener(object : RefAnimationListener(chip) {
+                    override fun onAnimationRepeat(animation: Animation?) {}
+                    override fun onAnimationStart(animation: Animation?) {}
+                    override fun onAnimationEnd(animation: Animation?) {
+                        this.view.visibility = View.INVISIBLE
+                        if (this.view as Chip == lastChip)
+                            navigate(false)
+                    }
+                })
+                chip.postDelayed({ chip.startAnimation(fadeOut) }, i * 50L)
 
-            if (i == chipGroup.childCount -1)
-                lastChip = chip
+                if (i == chipGroup.childCount -1)
+                    lastChip = chip
+            }
         }
     }
 
     private fun navigate(direction : Boolean) {
+        emptyLayout.animate().alpha(0f).setDuration(125).withEndAction{
+            emptyLayout.visibility = View.INVISIBLE
+            emptyLayout.alpha = 1f
+        }.start()
+        listView.animate().alpha(0f).setDuration(125).withEndAction{
+            listView.visibility = View.INVISIBLE
+            listView.alpha = 1f
+        }.start()
+        progressBar.alpha = 0f
+        progressBar.visibility = View.VISIBLE
+        progressBar.animate().alpha(1f).setDuration(125).withEndAction{
+            progressBar.alpha = 1f
+        }.setStartDelay(125).start()
+
         chipGroup.removeAllViews()
-        if (direction) {
+        if (direction)
             actualFolder = findFolder(clickedChip?.text)!!
-            createChips(actualFolder!!)
-        } else {
+        else
             actualFolder = actualFolder?.previous?.copy()
-            createChips(actualFolder!!)
-        }
+
+        loadedFiles = 0
+        decryptFiles()
     }
 
     private fun findFolder(text : CharSequence?) : Folder? {
@@ -373,11 +454,16 @@ class MainActivity : AppCompatActivity() {
         if (isPaused) {
             lockLayout.visibility = View.GONE
             bottomBar.visibility = View.VISIBLE
+            val scrollView = findViewById<HorizontalScrollView>(R.id.scrollView_chipgroup)
+            scrollView.visibility = View.VISIBLE
+
             isPaused = false
             return
         }
 
-        progressBar.visibility = View.GONE
+        progressBar.animate().alpha(0f).setDuration(125).withEndAction{
+            progressBar.visibility = View.GONE
+        }.start()
         isPaused = true
         val intent = Intent(this@MainActivity, LoginActivity::class.java)
         intent.putExtra("previous", "MainActivity")
@@ -399,6 +485,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        finish()
+        if (actualFolder == mapping)
+            finish()
+        else
+            goUp()
     }
 }
