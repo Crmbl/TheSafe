@@ -187,6 +187,7 @@ class MainActivity : AppCompatActivity() {
                         actualFolder?.files?.take(loadedFiles)!!.toMutableList()
             adapter = ItemAdapter(this@MainActivity, files!!)
             listView.adapter = adapter
+            showUi()
             if (actualFolder?.files?.count() == 0) {
                 emptyLayout.alpha = 0f
                 emptyLayout.visibility = View.VISIBLE
@@ -194,8 +195,6 @@ class MainActivity : AppCompatActivity() {
                     emptyLayout.alpha = 1f
                 }.start()
             }
-            else
-                showUi()
         }
     }
 
