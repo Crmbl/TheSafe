@@ -108,7 +108,10 @@ class MainActivity : AppCompatActivity() {
                 return false
             }
         })
-
+        listView.onItemClickListener = AdapterView.OnItemClickListener { parent, view, position, _ ->
+            val item = parent?.getItemAtPosition(position) as com.crmbl.thesafe.File
+            FullScreenMedia(applicationContext, view!!, item.decrypted!!, item.originName.split('.').last())
+        }
         listView.setOnScrollListener(object : AbsListView.OnScrollListener {
             override fun onScrollStateChanged(view: AbsListView?, scrollState: Int) {
                 if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_TOUCH_SCROLL) {
@@ -130,9 +133,6 @@ class MainActivity : AppCompatActivity() {
         editText.setTextColor(resources.getColor(R.color.colorBackground, theme))
         editText.setHintTextColor(resources.getColor(R.color.colorHint, theme))
 
-        //endregion init
-        //region mapping decrypt
-
         try{
             cryptoUtil = CryptoUtil(prefs.passwordDecryptHash, prefs.saltDecryptHash)
             val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[0]
@@ -145,7 +145,7 @@ class MainActivity : AppCompatActivity() {
         }
         catch(ex : Exception) { throw Exception("Error: ${ex.message}") }
 
-        //endregion mapping decrypt
+        //endregion init
     }
 
     private fun decryptMappingFile(input : ByteArray) = GlobalScope.launch {
@@ -398,10 +398,10 @@ class MainActivity : AppCompatActivity() {
         }.setStartDelay(125).start()
 
         chipGroup.removeAllViews()
-        if (direction)
-            actualFolder = findFolder(clickedChip?.text)!!
-        else
-            actualFolder = actualFolder?.previous?.copy()
+        actualFolder = if (direction)
+                            findFolder(clickedChip?.text)!!
+                        else
+                            actualFolder?.previous?.copy()
 
         loadedFiles = 0
         decryptFiles()
