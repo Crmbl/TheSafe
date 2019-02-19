@@ -8,13 +8,7 @@ data class File(
     @Json(name = "UpdatedName")
     var updatedName : String,
     @Json(ignored = true)
-    var decrypted : ByteArray? = null,
-    @Json(ignored = true)
-    var position : Int = 0,
-    @Json(ignored = true)
-    var height : Int = 0,
-    @Json(ignored = true)
-    var totalHeight : Int = 0
+    var decrypted : ByteArray? = null
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

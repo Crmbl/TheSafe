@@ -78,7 +78,7 @@
                     android:text="@={viewModel.settingSalt}"/>
         </com.google.android.material.textfield.TextInputLayout>
 
-        <ImageView android:id="@+id/imageview_checkup"
+        <pl.droidsonroids.gif.GifImageView android:id="@+id/imageview_checkup"
                    android:layout_marginTop="10dp"
                    android:contentDescription="@string/verify_decryption_password_salt"
                    android:layout_below="@id/decryp_salt_field"

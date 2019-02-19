@@ -39,14 +39,12 @@ class MainActivity : AppCompatActivity() {
     private var loadedFiles : Int = 0
     private var isPaused : Boolean = true
     private var goSettings : Boolean = false
-    private var userScrolled : Boolean = false
     private var mapping : Folder? = null
     private var clickedChip : Chip? = null
     private var actualFolder : Folder? = null
     private var files : MutableList<com.crmbl.thesafe.File>? = null
     private var lastChip : Chip? = null
-    //private var adapter : ItemAdapter? = null
-    private var adapterR : ItemRAdapter? = null
+    private var adapter : ItemAdapter? = null
     private lateinit var recyclerView : RecyclerView
 
     private lateinit var lockLayout : FrameLayout
@@ -54,9 +52,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var progressBar : ProgressBar
     private lateinit var bottomBar : BottomAppBar
     private lateinit var addMoreLayout : LinearLayout
-    //private lateinit var listView : ListView
     private lateinit var chipGroup : ChipGroup
     private lateinit var prefs : Prefs
+    private lateinit var layoutManager : LinearLayoutManager
     private lateinit var broadcastReceiver: BroadcastReceiver
     private lateinit var cryptedMapping : File
     private lateinit var cryptoUtil : CryptoUtil
@@ -90,22 +88,19 @@ class MainActivity : AppCompatActivity() {
         lockLayout = findViewById(R.id.layout_lock)
         emptyLayout = findViewById(R.id.linearLayout_no_result)
         chipGroup = findViewById(R.id.chipgroup_folders)
-
         recyclerView = findViewById(R.id.recyclerview_main)
-        recyclerView.layoutManager = LinearLayoutManager(this)
+        layoutManager = LinearLayoutManager(this)
+        recyclerView.layoutManager = layoutManager
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            //TODO it waits till it's stopped, not working for me :(
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
-                if (dy > 0) {
-                    hideUi()
-                } else {
-                    showUi()
+
+                if(layoutManager.findLastVisibleItemPosition() == files?.size!! -1){
+                    updateListView()
                 }
             }
         })
-        /*listView = findViewById(R.id.listview_main)
-        listView.setOnTouchListener(object : View.OnTouchListener {
+        recyclerView.setOnTouchListener(object : View.OnTouchListener {
             var initialY : Float = 0f
             var finalY : Float = 0f
 
@@ -126,23 +121,16 @@ class MainActivity : AppCompatActivity() {
                 return false
             }
         })
-        listView.onItemClickListener = AdapterView.OnItemClickListener { parent, view, position, _ ->
-            val item = parent?.getItemAtPosition(position) as com.crmbl.thesafe.File
-            FullScreenMedia(applicationContext, view!!, item.decrypted!!, item.originName.split('.').last())
-        }
-        listView.setOnScrollListener(object : AbsListView.OnScrollListener {
-            override fun onScrollStateChanged(view: AbsListView?, scrollState: Int) {
-                if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_TOUCH_SCROLL) {
-                    userScrolled = true
+        recyclerView.addOnItemTouchListener(RecyclerItemClickListener(this, recyclerView, object : RecyclerItemClickListener.OnItemClickListener {
+                override fun onItemClick(view: View, position: Int) {
+                    val file = files!![position]
+                    FullScreenMedia(applicationContext, view, file.decrypted!!, file.originName.split('.').last())
                 }
-            }
-            override fun onScroll(view: AbsListView?, firstVisibleItem: Int, visibleItemCount: Int, totalItemCount: Int) {
-                if (userScrolled && firstVisibleItem + visibleItemCount == totalItemCount) {
-                    userScrolled = false
-                    updateListView()
-                }
-            }
-        })*/
+
+                override fun onLongItemClick(view: View?, position: Int) {}
+            })
+        )
+
         val goSettings = findViewById<ImageView>(R.id.imageview_go_settings)
         goSettings.setOnClickListener {this.goSettings()}
 
@@ -193,9 +181,6 @@ class MainActivity : AppCompatActivity() {
                     progressBar.visibility = View.GONE
                     progressBar.alpha = 1f
 
-                    /*if (listView.visibility != View.VISIBLE) {
-                        listView.visibility = View.VISIBLE
-                    }*/
                     if (recyclerView.visibility != View.VISIBLE) {
                         recyclerView.visibility = View.VISIBLE
                     }
@@ -206,10 +191,8 @@ class MainActivity : AppCompatActivity() {
                         actualFolder?.files!!.toMutableList()
                     else
                         actualFolder?.files?.take(loadedFiles)!!.toMutableList()
-            //adapter = ItemAdapter(this@MainActivity, files!!)
-            adapterR = ItemRAdapter(files!!)
-            //listView.adapter = adapter
-            recyclerView.adapter = adapterR
+            adapter = ItemAdapter(applicationContext, files!!)
+            recyclerView.adapter = adapter
             showUi()
             if (actualFolder?.files?.count() == 0) {
                 emptyLayout.alpha = 0f
@@ -239,7 +222,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
 
-                    //adapter?.notifyDataSetChanged()
+                    adapter?.notifyDataSetChanged()
                     addMoreLayout.visibility = View.GONE
                 }, 500)
             }.start()
@@ -344,12 +327,7 @@ class MainActivity : AppCompatActivity() {
         })
 
         if (loadedFiles == 0) return
-        /*if (mapping != null && listView.getChildAt(listView.lastVisiblePosition - listView.firstVisiblePosition).bottom > listView.height
-            && bottomBar.visibility == View.VISIBLE && scrollView.visibility == View.VISIBLE) {
-            bottomBar.startAnimation(slideDown)
-            scrollView.startAnimation(slideUp)
-        }*/
-        if (mapping != null
+        if (mapping != null && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount - 1
             && bottomBar.visibility == View.VISIBLE && scrollView.visibility == View.VISIBLE) {
             bottomBar.startAnimation(slideDown)
             scrollView.startAnimation(slideUp)
@@ -415,10 +393,6 @@ class MainActivity : AppCompatActivity() {
             emptyLayout.visibility = View.INVISIBLE
             emptyLayout.alpha = 1f
         }.start()
-        /*listView.animate().alpha(0f).setDuration(125).withEndAction{
-            listView.visibility = View.INVISIBLE
-            listView.alpha = 1f
-        }.start()*/
         recyclerView.animate().alpha(0f).setDuration(125).withEndAction{
             recyclerView.visibility = View.INVISIBLE
             recyclerView.alpha = 1f

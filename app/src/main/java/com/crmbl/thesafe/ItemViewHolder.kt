@@ -8,6 +8,7 @@ import pl.droidsonroids.gif.GifImageView
 
 
 class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+
     private val textViewTitle : TextView = itemView.findViewById(R.id.textview_title)
     private val textViewExt : TextView = itemView.findViewById(R.id.textview_ext)
     private val mediaView : GifImageView = itemView.findViewById(R.id.imageView) as GifImageView
@@ -17,5 +18,9 @@ class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         textViewTitle.text = splitedName.first()
         textViewExt.text = splitedName.last()
         mediaView.setImageDrawable(GifDrawable(file.decrypted!!))
+    }
+
+    fun clearAnimation() {
+        itemView.clearAnimation()
     }
 }

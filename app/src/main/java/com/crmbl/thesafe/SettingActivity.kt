@@ -21,9 +21,9 @@ import android.transition.Fade
 import android.transition.Transition
 import android.view.View
 import android.widget.FrameLayout
-import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import com.google.android.material.textfield.TextInputLayout
+import pl.droidsonroids.gif.GifImageView
 import java.io.File
 import java.util.*
 import kotlin.concurrent.schedule
@@ -179,7 +179,7 @@ class SettingActivity : AppCompatActivity() {
                 val testFile = File(theSafeFolder, "/testing.$fileExt")
                 testFile.writeBytes(output!!)
 
-                val imageView = findViewById<ImageView>(R.id.imageview_checkup)
+                val imageView = findViewById<GifImageView>(R.id.imageview_checkup)
                 imageView.setImageURI(Uri.fromFile(testFile))
                 imageView.postDelayed({
                     imageView.setImageResource(R.drawable.ic_no_encryption_background_24dp)

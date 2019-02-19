@@ -16,5 +16,5 @@
             android:layout_gravity="center"
             android:minHeight="24dp"
             android:minWidth="24dp"
-            app:SpinKit_Color="@color/colorError" />
+            app:SpinKit_Color="@color/colorAccent" />
 </LinearLayout>
