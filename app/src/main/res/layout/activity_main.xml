@@ -42,7 +42,16 @@
                 android:layout_height="wrap_content"/>
     </HorizontalScrollView>
 
-    <ListView android:id="@+id/listview_main"
+    <!--<ListView android:id="@+id/listview_main"-->
+              <!--android:layout_gravity="center"-->
+              <!--android:dividerHeight="0dp"-->
+              <!--android:divider="@null"-->
+              <!--android:scrollbars="none"-->
+              <!--android:scrollbarAlwaysDrawVerticalTrack="false"-->
+              <!--android:layout_width="match_parent"-->
+              <!--android:layout_height="match_parent"/>-->
+
+    <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerview_main"
               android:layout_gravity="center"
               android:dividerHeight="0dp"
               android:divider="@null"
@@ -100,7 +109,7 @@
             android:layout_gravity="bottom"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:hideOnScroll="true"
+            app:hideOnScroll="false"
             android:backgroundTint="@color/colorPrimaryDark"
             style="@style/Widget.MaterialComponents.BottomAppBar"
             app:fabAlignmentMode="center">
