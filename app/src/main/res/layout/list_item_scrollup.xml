@@ -3,22 +3,21 @@
               xmlns:app="http://schemas.android.com/apk/res-auto"
               android:orientation="vertical"
               android:layout_width="match_parent"
-              android:layout_height="wrap_content"
+              android:layout_height="48dp"
               android:background="@drawable/bg_listitem_rounded"
-              android:padding="14dp"
               android:layout_marginLeft="6dp"
               android:layout_marginRight="6dp"
               android:layout_marginTop="3dp"
               android:layout_marginBottom="6dp"
               android:elevation="5dp">
 
-    <com.github.ybq.android.spinkit.SpinKitView
-            android:id="@+id/progress_bar"
-            style="@style/SpinKitView.Small.CubeGrid"
+    <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_scrollUp"
+            android:text="@string/scroll_to_top"
+            android:textAllCaps="true"
+            app:icon="@drawable/ic_arrow_upward_white_24dp"
+            android:layout_gravity="center_horizontal"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:minHeight="24dp"
-            android:minWidth="24dp"
-            app:SpinKit_Color="@color/colorAccent" />
+            android:layout_marginTop="3dp"
+            android:layout_height="42dp"/>
 </LinearLayout>

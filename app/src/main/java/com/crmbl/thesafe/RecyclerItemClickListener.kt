@@ -5,6 +5,7 @@ import android.view.MotionEvent
 import androidx.recyclerview.widget.RecyclerView
 import android.view.GestureDetector
 import android.view.View
+import com.google.android.material.button.MaterialButton
 
 
 class RecyclerItemClickListener(context: Context, recyclerView: RecyclerView, private val mListener: OnItemClickListener?)
@@ -34,7 +35,8 @@ class RecyclerItemClickListener(context: Context, recyclerView: RecyclerView, pr
 
     override fun onInterceptTouchEvent(view: RecyclerView, e: MotionEvent): Boolean {
         val childView = view.findChildViewUnder(e.x, e.y)
-        if (childView != null && mListener != null && mGestureDetector.onTouchEvent(e)) {
+        val isScrollUp = childView?.findViewById<MaterialButton>(R.id.button_scrollUp) != null
+        if (childView != null && mListener != null && mGestureDetector.onTouchEvent(e) && !isScrollUp) {
             mListener.onItemClick(childView, view.getChildAdapterPosition(childView))
             return true
         }
