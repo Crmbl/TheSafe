@@ -5,9 +5,9 @@ import java.security.DigestException
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 
-class PasswordDeriveBytes {
+class PasswordDeriveBytes(strPassword: String, rgbSalt: ByteArray, strHashName: String, iterations: Int) {
 
-    var hashName: String? = null
+    private var hashName: String? = null
         set(hashName) {
             if (hashName == null)
                 throw NullPointerException("HashName")
@@ -24,7 +24,7 @@ class PasswordDeriveBytes {
 
         }
     private var SaltValue: ByteArray? = null
-    var iterationCount: Int = 0
+    private var iterationCount: Int = 0
         set(iterationCount) {
             if (iterationCount < 1)
                 throw NullPointerException("HashName")
@@ -44,7 +44,7 @@ class PasswordDeriveBytes {
     private var hashnumber: Int = 0
     private var skip: Int = 0
 
-    var salt: ByteArray?
+    private var salt: ByteArray?
         get() = if (SaltValue == null) null else SaltValue
         set(salt) {
             if (state != 0) {
@@ -56,24 +56,11 @@ class PasswordDeriveBytes {
                 SaltValue = null
         }
 
-    constructor(strPassword: String, rgbSalt: ByteArray) {
-        Prepare(strPassword, rgbSalt, "SHA-1", 100)
+    init {
+        prepare(strPassword, rgbSalt, strHashName, iterations)
     }
 
-    constructor(strPassword: String, rgbSalt: ByteArray, strHashName: String, iterations: Int) {
-        Prepare(strPassword, rgbSalt, strHashName, iterations)
-    }
-
-    constructor(password: ByteArray, salt: ByteArray) {
-        Prepare(password, salt, "SHA-1", 100)
-    }
-
-
-    constructor(password: ByteArray, salt: ByteArray, hashName: String, iterations: Int) {
-        Prepare(password, salt, hashName, iterations)
-    }
-
-    private fun Prepare(strPassword: String?, rgbSalt: ByteArray, strHashName: String, iterations: Int) {
+    private fun prepare(strPassword: String?, rgbSalt: ByteArray, strHashName: String, iterations: Int) {
         if (strPassword == null)
             throw NullPointerException("strPassword")
 
@@ -84,10 +71,10 @@ class PasswordDeriveBytes {
             e.printStackTrace()
         }
 
-        Prepare(pwd, rgbSalt, strHashName, iterations)
+        prepare(pwd, rgbSalt, strHashName, iterations)
     }
 
-    private fun Prepare(password: ByteArray?, rgbSalt: ByteArray, strHashName: String, iterations: Int) {
+    private fun prepare(password: ByteArray?, rgbSalt: ByteArray, strHashName: String, iterations: Int) {
         if (password == null)
             throw NullPointerException("password")
 
@@ -102,13 +89,13 @@ class PasswordDeriveBytes {
     }
 
     @Throws(DigestException::class)
-    fun GetBytes(cb: Int): ByteArray {
+    fun getBytes(cb: Int): ByteArray {
         if (cb < 1) {
             throw IndexOutOfBoundsException("cb")
         }
 
         if (state == 0) {
-            Reset()
+            reset()
             state = 1
         }
 
@@ -130,20 +117,20 @@ class PasswordDeriveBytes {
 
         while (cpos < cb) {
             var output2: ByteArray?
-            if (hashnumber == 0) {
-                // last iteration on output
-                output2 = hash!!.digest(output)
-            } else if (hashnumber < 1000) {
-                val n = Integer.toString(hashnumber).toByteArray()
-                output2 = ByteArray(output!!.size + n.size)
-                for (j in n.indices) {
-                    output2[j] = n[j]
+            when {
+                hashnumber == 0 -> // last iteration on output
+                    output2 = hash!!.digest(output)
+                hashnumber < 1000 -> {
+                    val n = Integer.toString(hashnumber).toByteArray()
+                    output2 = ByteArray(output!!.size + n.size)
+                    for (j in n.indices) {
+                        output2[j] = n[j]
+                    }
+                    System.arraycopy(output!!, 0, output2, n.size, output!!.size)
+                    // don't update output
+                    output2 = hash!!.digest(output2)
                 }
-                System.arraycopy(output!!, 0, output2, n.size, output!!.size)
-                // don't update output
-                output2 = hash!!.digest(output2)
-            } else {
-                throw SecurityException("too long")
+                else -> throw SecurityException("too long")
             }
 
             val rem = output2!!.size - position
@@ -160,11 +147,10 @@ class PasswordDeriveBytes {
 
         // saving first output length
         if (state == 1) {
-            if (cb > 20) {
-                skip = 40 - result.size
-            } else {
-                skip = 20 - result.size
-            }
+            skip = if (cb > 20)
+                        40 - result.size
+                    else
+                        20 - result.size
             firstBaseOutput = ByteArray(result.size)
             System.arraycopy(result, 0, firstBaseOutput!!, 0, result.size)
             state = 2
@@ -181,7 +167,7 @@ class PasswordDeriveBytes {
     }
 
     @Throws(DigestException::class)
-    fun Reset() {
+    fun reset() {
         state = 0
         position = 0
         hashnumber = 0

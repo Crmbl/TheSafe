@@ -3,6 +3,7 @@ package com.crmbl.thesafe
 import androidx.databinding.BaseObservable
 import androidx.databinding.Bindable
 
+
 data class SettingViewModel(
     private var _rememberUsername: Boolean = false,
     private var _useFingerprint: Boolean = false,

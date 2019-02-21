@@ -33,8 +33,8 @@ data class CryptoUtil(
 
     fun decrypt(inputFile : File) : ByteArray? {
         val password = PasswordDeriveBytes(_password, _salt.toByteArray(Charsets.US_ASCII), "SHA1", 2)
-        val pass32: ByteArray = password.GetBytes(32)
-        val pass16: ByteArray = password.GetBytes(16)
+        val pass32: ByteArray = password.getBytes(32)
+        val pass16: ByteArray = password.getBytes(16)
 
         val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
         FileInputStream(inputFile).use { fileIn ->

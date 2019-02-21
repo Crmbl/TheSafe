@@ -13,6 +13,7 @@ import android.widget.ImageButton
 import android.content.Context.LAYOUT_INFLATER_SERVICE
 import android.view.LayoutInflater
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.PopupWindow
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
@@ -28,6 +29,7 @@ class FullScreenMedia(internal var mContext: Context, v: View, imageBytes: ByteA
     internal var view: View
     internal var photoView: PhotoView
     internal var loading: ProgressBar
+    internal var lockLayout: FrameLayout
     private var parent: ViewGroup
 
     init {
@@ -39,6 +41,7 @@ class FullScreenMedia(internal var mContext: Context, v: View, imageBytes: ByteA
         isFocusable = true
         closeButton.setOnClickListener { dismiss() }
 
+        lockLayout = view.findViewById(R.id.layout_lock)
         photoView = view.findViewById(R.id.image)
         loading = view.findViewById(R.id.loading)
         photoView.maximumScale = 6f

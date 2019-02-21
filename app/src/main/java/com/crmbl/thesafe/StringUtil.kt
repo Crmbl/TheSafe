@@ -3,6 +3,7 @@ package com.crmbl.thesafe
 import java.math.BigInteger
 import java.security.MessageDigest
 
+
 class StringUtil {
     fun md5(value : String): String {
         val md = MessageDigest.getInstance("MD5")

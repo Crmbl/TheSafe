@@ -34,9 +34,7 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
         fun bind(parent: RecyclerView?) {
             button.setOnClickListener {
                 parent!!.smoothScrollToPosition(0)
-
-                //val layoutManager = parent!!.layoutManager as LinearLayoutManager
-                //layoutManager.scrollToPositionWithOffset(0, 0)
+                parent.tag = "smoothScrolling"
             }
         }
     }
