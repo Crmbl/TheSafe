@@ -54,6 +54,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var emptyLayout : LinearLayout
     private lateinit var progressBar : ProgressBar
     private lateinit var bottomBar : BottomAppBar
+    private lateinit var searchView: SearchView
     private lateinit var chipGroup : ChipGroup
     private lateinit var prefs : Prefs
     private lateinit var layoutManager : LinearLayoutManager
@@ -87,6 +88,14 @@ class MainActivity : AppCompatActivity() {
         lockLayout = findViewById(R.id.layout_lock)
         emptyLayout = findViewById(R.id.linearLayout_no_result)
         chipGroup = findViewById(R.id.chipgroup_folders)
+        searchView = bottomBar.findViewById(R.id.searchview)
+        searchView.setOnQueryTextListener(object: SearchView.OnQueryTextListener {
+            override fun onQueryTextChange(newText: String?): Boolean { return false }
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                searchQuery(query)
+                return false
+            }
+        })
 
         //region RecyclerView
 
@@ -128,7 +137,6 @@ class MainActivity : AppCompatActivity() {
 
         val goSettings = findViewById<ImageView>(R.id.imageview_go_settings)
         goSettings.setOnClickListener {this.goSettings()}
-
         val searchView = findViewById<SearchView>(R.id.searchview)
         val editText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
         editText.setTextColor(resources.getColor(R.color.colorBackground, theme))
@@ -422,7 +430,7 @@ class MainActivity : AppCompatActivity() {
                     when {
                         event?.action == MotionEvent.ACTION_DOWN -> initialY = event.y
                         event?.action == MotionEvent.ACTION_UP -> {
-                            if (Math.abs(initialY - event.y) in 1400.0..2000.0)
+                            if (Math.abs(initialY - event.y) in 1700.0..2100.0)
                                 fullScreen?.dismiss()
                         }
                     }
@@ -431,6 +439,19 @@ class MainActivity : AppCompatActivity() {
             })
         }
         catch(ex: Exception) {}
+    }
+
+    private fun searchQuery(query: String?) {
+        //TODO obviously not working well, need animation, handling no file found etc etc...
+        if (query.isNullOrEmpty()) {
+            chipGroup.removeAllViews()
+            loadedFiles = 0
+            decryptFiles()
+        } else {
+            files = actualFolder?.files!!.filter{f-> f.originName.contains(query)}.toMutableList()
+            adapter?.notifyDataSetChanged()
+        }
+
     }
 
     private fun navigate(direction : Boolean) {
