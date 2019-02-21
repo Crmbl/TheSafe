@@ -4,12 +4,11 @@
               android:orientation="vertical"
               android:layout_width="match_parent"
               android:layout_height="48dp"
-              android:background="@drawable/bg_listitem_rounded"
+              android:background="@color/colorBackground"
               android:layout_marginLeft="6dp"
               android:layout_marginRight="6dp"
               android:layout_marginTop="3dp"
-              android:layout_marginBottom="6dp"
-              android:elevation="5dp">
+              android:layout_marginBottom="6dp">
 
     <com.google.android.material.button.MaterialButton
             android:id="@+id/button_scrollUp"

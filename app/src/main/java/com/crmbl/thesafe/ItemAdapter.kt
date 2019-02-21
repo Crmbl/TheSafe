@@ -6,12 +6,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
+import android.widget.MediaController
 import android.widget.TextView
+import android.widget.VideoView
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import pl.droidsonroids.gif.GifDrawable
 import pl.droidsonroids.gif.GifImageView
-import androidx.recyclerview.widget.LinearLayoutManager
 
 
 class ItemAdapter(private val context: Context, private val dataSource : MutableList<File>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -42,13 +43,26 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
 
         private val textViewTitle : TextView = itemView.findViewById(R.id.textview_title)
         private val textViewExt : TextView = itemView.findViewById(R.id.textview_ext)
-        private val mediaView : GifImageView = itemView.findViewById(R.id.imageView) as GifImageView
+        private val mediaView : GifImageView = itemView.findViewById(R.id.imageView)
+        private val videoView : VideoView = itemView.findViewById(R.id.videoView)
 
-        fun bind(file : File) {
+        fun bind(file : File, mRecyclerView: RecyclerView?) {
             val splitedName = file.originName.split('.')
             textViewTitle.text = splitedName.first()
             textViewExt.text = splitedName.last()
-            mediaView.setImageDrawable(GifDrawable(file.decrypted!!))
+
+            val imageFileExtensions: Array<String> = arrayOf("gif", "png", "jpg", "jpeg", "bmp", "pdf")
+            if (imageFileExtensions.contains(splitedName.last().toLowerCase())) {
+                mediaView.visibility = View.VISIBLE
+                mediaView.setImageDrawable(GifDrawable(file.decrypted!!))
+            }
+            else {
+                val mediacontrols = MediaController(mRecyclerView?.context)
+                videoView.setMediaController(mediacontrols)
+                videoView.visibility = View.VISIBLE
+                //TODO create tmp file, with deleteOnExit... And when on pause, delete the file, then play from position
+                //videoView.setVideoURI()
+            }
         }
 
         fun clearAnimation() {
@@ -106,7 +120,7 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
         when (holder) {
             is ItemViewHolder -> {
                 val file : File = dataSource[position]
-                holder.bind(file)
+                holder.bind(file, mRecyclerView)
                 setAnimation(holder.itemView, position)
             }
             is FooterViewHolder -> {

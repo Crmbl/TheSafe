@@ -47,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     private var lastChip : Chip? = null
     private var adapter : ItemAdapter? = null
     private var fullScreen: FullScreenMedia? = null
+    private var query: String = ""
 
     private lateinit var recyclerView : RecyclerView
     private lateinit var lockLayout : FrameLayout
@@ -96,6 +97,11 @@ class MainActivity : AppCompatActivity() {
                 return false
             }
         })
+        val clearButton = searchView.findViewById<ImageView>(R.id.search_close_btn)
+        clearButton.setOnClickListener {
+            searchView.setQuery("", false)
+            searchQuery("")
+        }
 
         //region RecyclerView
 
@@ -167,8 +173,9 @@ class MainActivity : AppCompatActivity() {
     private fun decryptFiles() = GlobalScope.launch {
         createChips(actualFolder!!)
         val theSafeFolder = ContextCompat.getExternalFilesDirs(applicationContext, null)[1].listFiles()[0].listFiles()[0]
+        val actualFolderFiltered = actualFolder?.files?.filter{f-> f.originName.toLowerCase().contains(query.toLowerCase())}
 
-        for ((i, file) in actualFolder?.files?.withIndex()!!) {
+        for ((i, file) in actualFolderFiltered?.withIndex()!!) {
             if (i == loadLimit) break
             for (realFile in theSafeFolder.listFiles()) {
                 if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
@@ -190,25 +197,25 @@ class MainActivity : AppCompatActivity() {
                 }.start()
             }
 
-            if (actualFolder?.files?.count() == 0)
-                files = actualFolder?.files!!.toMutableList()
+            if (actualFolderFiltered.count() == 0)
+                files = actualFolderFiltered.toMutableList()
             else {
-                files = actualFolder?.files?.take(loadedFiles)!!.toMutableList()
+                files = actualFolderFiltered.take(loadedFiles).toMutableList()
                 files?.add(0, File("", "", null, "header"))
-                if (loadedFiles != actualFolder?.files?.count())
+                if (loadedFiles != actualFolderFiltered.count())
                     files?.add(File("", "", null, "footer"))
             }
 
             adapter = ItemAdapter(applicationContext, files!!)
             recyclerView.adapter = adapter
 
-            if (loadedFiles == actualFolder?.files?.count() && recyclerView.computeVerticalScrollRange() > recyclerView.height) {
+            if (loadedFiles == actualFolderFiltered.count() && recyclerView.computeVerticalScrollRange() > recyclerView.height) {
                 files?.add(File("", "", null, "scrollUp"))
                 adapter?.notifyDataSetChanged()
             }
 
             showUi()
-            if (actualFolder?.files?.count() == 0) {
+            if (actualFolderFiltered.count() == 0) {
                 emptyLayout.alpha = 0f
                 emptyLayout.visibility = View.VISIBLE
                 emptyLayout.animate().alpha(1f).setDuration(125).withEndAction{
@@ -219,11 +226,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateListView() {
-      if (loadedFiles != actualFolder?.files?.count()) {
+        val actualFolderFiltered = actualFolder?.files?.filter{f-> f.originName.toLowerCase().contains(query.toLowerCase())}
+        if (loadedFiles != actualFolderFiltered?.count()) {
           recyclerView.postDelayed ({
               files?.removeAt(files!!.lastIndex)
               val theSafeFolder = ContextCompat.getExternalFilesDirs(applicationContext, null)[1].listFiles()[0].listFiles()[0]
-              for ((i, file) in actualFolder?.files?.drop(loadedFiles)?.withIndex()!!) {
+              for ((i, file) in actualFolderFiltered?.drop(loadedFiles)?.withIndex()!!) {
                   if (i == loadLimit) break
                   for (realFile in theSafeFolder.listFiles()) {
                       if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
@@ -234,9 +242,9 @@ class MainActivity : AppCompatActivity() {
                   }
               }
 
-              if (loadedFiles != actualFolder?.files?.count())
+              if (loadedFiles != actualFolderFiltered.count())
                   files?.add(File("", "", null, "footer"))
-              else if (loadedFiles == actualFolder!!.files.count()
+              else if (loadedFiles == actualFolderFiltered.count()
                   && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount)
                   files?.add(File("", "", null, "scrollUp"))
 
@@ -442,19 +450,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun searchQuery(query: String?) {
-        //TODO obviously not working well, need animation, handling no file found etc etc...
-        if (query.isNullOrEmpty()) {
-            chipGroup.removeAllViews()
-            loadedFiles = 0
-            decryptFiles()
-        } else {
-            files = actualFolder?.files!!.filter{f-> f.originName.contains(query)}.toMutableList()
-            adapter?.notifyDataSetChanged()
-        }
-
+        this.query = query.orEmpty()
+        navigate(null)
     }
 
-    private fun navigate(direction : Boolean) {
+    private fun navigate(direction : Boolean?) {
         emptyLayout.animate().alpha(0f).setDuration(125).withEndAction{
             emptyLayout.visibility = View.INVISIBLE
             emptyLayout.alpha = 1f
@@ -470,10 +470,12 @@ class MainActivity : AppCompatActivity() {
         }.setStartDelay(125).start()
 
         chipGroup.removeAllViews()
-        actualFolder = if (direction)
-                            findFolder(clickedChip?.text)!!
-                        else
-                            actualFolder?.previous?.copy()
+        if (direction != null) {
+            actualFolder = if (direction)
+                findFolder(clickedChip?.text)!!
+            else
+                actualFolder?.previous?.copy()
+        }
 
         loadedFiles = 0
         decryptFiles()

@@ -4,6 +4,7 @@
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@color/colorBackground"
         xmlns:app="http://schemas.android.com/apk/res-auto"
         tools:context="com.crmbl.thesafe.MainActivity">
 
@@ -29,6 +30,7 @@
             android:scrollbars="none"
             android:focusable="true"
             android:clickable="true"
+            android:background="@android:color/transparent"
             android:elevation="5dp"
             android:scrollbarAlwaysDrawHorizontalTrack="false">
 
@@ -46,6 +48,7 @@
               android:layout_gravity="center"
               android:dividerHeight="0dp"
               android:divider="@null"
+              android:background="@color/colorBackground"
               android:scrollbars="none"
               android:scrollbarAlwaysDrawVerticalTrack="false"
               android:layout_width="match_parent"

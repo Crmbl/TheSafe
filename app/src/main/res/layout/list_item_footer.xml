@@ -4,13 +4,12 @@
               android:orientation="vertical"
               android:layout_width="match_parent"
               android:layout_height="wrap_content"
-              android:background="@drawable/bg_listitem_rounded"
               android:padding="14dp"
+              android:background="@color/colorBackground"
               android:layout_marginLeft="6dp"
               android:layout_marginRight="6dp"
               android:layout_marginTop="3dp"
-              android:layout_marginBottom="6dp"
-              android:elevation="5dp">
+              android:layout_marginBottom="6dp">
 
     <com.github.ybq.android.spinkit.SpinKitView
             android:id="@+id/progress_bar"

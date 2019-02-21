@@ -7,14 +7,11 @@ import android.graphics.Bitmap
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import android.content.Context
-import android.widget.ProgressBar
 import com.github.chrisbanes.photoview.PhotoView
-import android.widget.ImageButton
 import android.content.Context.LAYOUT_INFLATER_SERVICE
 import android.view.LayoutInflater
 import android.view.View
-import android.widget.FrameLayout
-import android.widget.PopupWindow
+import android.widget.*
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.resource.gif.GifDrawable
@@ -28,6 +25,7 @@ class FullScreenMedia(internal var mContext: Context, v: View, imageBytes: ByteA
 
     internal var view: View
     internal var photoView: PhotoView
+    internal var videoView: VideoView
     internal var loading: ProgressBar
     internal var lockLayout: FrameLayout
     private var parent: ViewGroup
@@ -43,13 +41,16 @@ class FullScreenMedia(internal var mContext: Context, v: View, imageBytes: ByteA
 
         lockLayout = view.findViewById(R.id.layout_lock)
         photoView = view.findViewById(R.id.image)
+        videoView = view.findViewById(R.id.video)
         loading = view.findViewById(R.id.loading)
         photoView.maximumScale = 6f
         parent = photoView.parent as ViewGroup
         loading.isIndeterminate = true
         loading.visibility = View.VISIBLE
 
+        val imageFileExtensions: Array<String> = arrayOf("png", "jpg", "jpeg", "bmp", "pdf")
         if (fileExt.toLowerCase() == "gif") {
+            photoView.visibility = View.VISIBLE
             Glide.with(mContext).asGif()
                 .load(imageBytes)
                 .listener(object : RequestListener<GifDrawable> {
@@ -65,10 +66,8 @@ class FullScreenMedia(internal var mContext: Context, v: View, imageBytes: ByteA
                         return false
                     }
                 }).into(photoView)
-        } /*else if () {
-            //TODO video
-        }*/
-        else {
+        } else if (imageFileExtensions.contains(fileExt.toLowerCase())) {
+            photoView.visibility = View.VISIBLE
             Glide.with(mContext).asBitmap()
                 .load(imageBytes)
                 .listener(object : RequestListener<Bitmap> {
@@ -84,6 +83,10 @@ class FullScreenMedia(internal var mContext: Context, v: View, imageBytes: ByteA
                         return false
                     }
                 }).into(photoView)
+        }
+        else {
+            videoView.visibility = View.VISIBLE
+            //TODO videoView mediaController...
         }
 
         showAtLocation(v, Gravity.CENTER, 0, 0)

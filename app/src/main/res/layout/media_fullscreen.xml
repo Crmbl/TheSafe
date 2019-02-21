@@ -24,10 +24,14 @@
 
     <com.github.chrisbanes.photoview.PhotoView
             android:id="@+id/image"
+            android:visibility="gone"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-    <!--TODO add VideoView-->
+    <VideoView android:id="@+id/video"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
 
     <ImageButton
             android:id="@+id/ib_close"
