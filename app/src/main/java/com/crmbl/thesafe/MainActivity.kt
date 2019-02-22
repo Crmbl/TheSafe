@@ -179,7 +179,11 @@ class MainActivity : AppCompatActivity() {
             if (i == loadLimit) break
             for (realFile in theSafeFolder.listFiles()) {
                 if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
-                    file.decrypted = cryptoUtil.decrypt(realFile)
+                    val imageFileExtensions: Array<String> = arrayOf("gif", "png", "jpg", "jpeg", "bmp", "pdf")
+                    if (imageFileExtensions.contains(file.updatedName.toLowerCase().split('.').last()))
+                        file.decrypted = cryptoUtil.decrypt(realFile)
+                    else
+                        file.path = realFile.path
                     loadedFiles++
                 }
             }

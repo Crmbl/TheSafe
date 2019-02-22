@@ -1,18 +1,26 @@
 package com.crmbl.thesafe
 
 import android.content.Context
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
-import android.widget.MediaController
 import android.widget.TextView
-import android.widget.VideoView
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.material.button.MaterialButton
 import pl.droidsonroids.gif.GifDrawable
 import pl.droidsonroids.gif.GifImageView
+import com.google.android.exoplayer2.ExoPlayerFactory
+import com.google.android.exoplayer2.source.ExtractorMediaSource
+import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection
+import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
+import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter
+import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 
 class ItemAdapter(private val context: Context, private val dataSource : MutableList<File>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -44,7 +52,7 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
         private val textViewTitle : TextView = itemView.findViewById(R.id.textview_title)
         private val textViewExt : TextView = itemView.findViewById(R.id.textview_ext)
         private val mediaView : GifImageView = itemView.findViewById(R.id.imageView)
-        private val videoView : VideoView = itemView.findViewById(R.id.videoView)
+        private val videoView : PlayerView = itemView.findViewById(R.id.videoView)
 
         fun bind(file : File, mRecyclerView: RecyclerView?) {
             val splitedName = file.originName.split('.')
@@ -56,14 +64,40 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
                 mediaView.visibility = View.VISIBLE
                 mediaView.setImageDrawable(GifDrawable(file.decrypted!!))
             }
-            else {
-                val mediacontrols = MediaController(mRecyclerView?.context)
-                videoView.setMediaController(mediacontrols)
+            else if (file.originName.isNotEmpty()) {
                 videoView.visibility = View.VISIBLE
-                //TODO create tmp file, with deleteOnExit... And when on pause, delete the file, then play from position
-                //videoView.setVideoURI()
+                playVideo(file, mRecyclerView!!)
             }
         }
+
+        ////////////////////////////////////////////////////////////////
+        private fun playVideo(file: File, parent: RecyclerView) {
+            val mCipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+            //val mCipher = Cipher.getInstance("AES/CBC/NoPadding")
+            val prefs = Prefs(parent.context)
+            val password = PasswordDeriveBytes(prefs.passwordDecryptHash, prefs.saltDecryptHash.toByteArray(Charsets.US_ASCII), "SHA1", 2)
+            val pass32: ByteArray = password.getBytes(32)
+            val pass16: ByteArray = password.getBytes(16)
+            mCipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(pass32, "SHA1PRNG"), IvParameterSpec(pass16))
+
+            val bandwidthMeter = DefaultBandwidthMeter()
+            val videoTrackSelectionFactory = AdaptiveTrackSelection.Factory(bandwidthMeter)
+            val trackSelector = DefaultTrackSelector(videoTrackSelectionFactory)
+            val player = ExoPlayerFactory.newSimpleInstance(parent.context, trackSelector)
+            videoView.player = player
+            val dataSourceFactory = EncryptedFileDataSourceFactory(mCipher, SecretKeySpec(pass32, "SHA1PRNG"), IvParameterSpec(pass16), bandwidthMeter)
+            //val extractorsFactory = DefaultExtractorsFactory()
+            try {
+                val uri = Uri.fromFile(java.io.File(file.path))
+                //val videoSource = ExtractorMediaSource(uri, dataSourceFactory, extractorsFactory, null, null)
+                val videoSource = ExtractorMediaSource.Factory(dataSourceFactory).createMediaSource(uri)
+                player.prepare(videoSource)
+                player.playWhenReady = true
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        ////////////////////////////////////////////////////////////////
 
         fun clearAnimation() {
             itemView.clearAnimation()

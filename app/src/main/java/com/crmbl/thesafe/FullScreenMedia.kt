@@ -16,6 +16,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.resource.gif.GifDrawable
 import com.bumptech.glide.request.target.Target
+import com.google.android.exoplayer2.ui.PlayerView
 
 
 @SuppressLint("InflateParams")
@@ -25,7 +26,7 @@ class FullScreenMedia(internal var mContext: Context, v: View, imageBytes: ByteA
 
     internal var view: View
     internal var photoView: PhotoView
-    internal var videoView: VideoView
+    internal var videoView: PlayerView
     internal var loading: ProgressBar
     internal var lockLayout: FrameLayout
     private var parent: ViewGroup
