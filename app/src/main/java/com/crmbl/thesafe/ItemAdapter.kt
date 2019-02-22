@@ -7,6 +7,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
+import android.widget.LinearLayout
+import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.exoplayer2.ui.PlayerView
@@ -14,13 +16,17 @@ import com.google.android.material.button.MaterialButton
 import pl.droidsonroids.gif.GifDrawable
 import pl.droidsonroids.gif.GifImageView
 import com.google.android.exoplayer2.ExoPlayerFactory
-import com.google.android.exoplayer2.source.ExtractorMediaSource
-import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
-import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter
-import javax.crypto.Cipher
-import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
+import java.io.ByteArrayInputStream
+import java.io.InputStream
+import java.net.*
+import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
+import com.google.android.exoplayer2.source.ExtractorMediaSource
+import com.google.android.exoplayer2.upstream.DataSpec
+import com.google.android.exoplayer2.upstream.ByteArrayDataSource
+import com.google.android.exoplayer2.upstream.DataSource
+import com.google.android.exoplayer2.video.VideoListener
+import java.io.IOException
 
 
 class ItemAdapter(private val context: Context, private val dataSource : MutableList<File>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -51,6 +57,7 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
 
         private val textViewTitle : TextView = itemView.findViewById(R.id.textview_title)
         private val textViewExt : TextView = itemView.findViewById(R.id.textview_ext)
+        private val bottomLayout : LinearLayout = itemView.findViewById(R.id.bottom_layout)
         private val mediaView : GifImageView = itemView.findViewById(R.id.imageView)
         private val videoView : PlayerView = itemView.findViewById(R.id.videoView)
 
@@ -59,45 +66,85 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
             textViewTitle.text = splitedName.first()
             textViewExt.text = splitedName.last()
 
+            val params = RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
             val imageFileExtensions: Array<String> = arrayOf("gif", "png", "jpg", "jpeg", "bmp", "pdf")
             if (imageFileExtensions.contains(splitedName.last().toLowerCase())) {
+                params.addRule(RelativeLayout.BELOW, R.id.imageView)
                 mediaView.visibility = View.VISIBLE
                 mediaView.setImageDrawable(GifDrawable(file.decrypted!!))
             }
             else if (file.originName.isNotEmpty()) {
+                params.addRule(RelativeLayout.BELOW, R.id.videoView)
                 videoView.visibility = View.VISIBLE
                 playVideo(file, mRecyclerView!!)
             }
+            bottomLayout.layoutParams = params
         }
 
-        ////////////////////////////////////////////////////////////////
+        ////////////VIDEO TESTING//////////////////////////////////////////
         private fun playVideo(file: File, parent: RecyclerView) {
-            val mCipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-            //val mCipher = Cipher.getInstance("AES/CBC/NoPadding")
-            val prefs = Prefs(parent.context)
-            val password = PasswordDeriveBytes(prefs.passwordDecryptHash, prefs.saltDecryptHash.toByteArray(Charsets.US_ASCII), "SHA1", 2)
-            val pass32: ByteArray = password.getBytes(32)
-            val pass16: ByteArray = password.getBytes(16)
-            mCipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(pass32, "SHA1PRNG"), IvParameterSpec(pass16))
-
-            val bandwidthMeter = DefaultBandwidthMeter()
-            val videoTrackSelectionFactory = AdaptiveTrackSelection.Factory(bandwidthMeter)
-            val trackSelector = DefaultTrackSelector(videoTrackSelectionFactory)
-            val player = ExoPlayerFactory.newSimpleInstance(parent.context, trackSelector)
+            val player = ExoPlayerFactory.newSimpleInstance(parent.context, DefaultTrackSelector())
+            player.addVideoListener(object: VideoListener {
+                override fun onVideoSizeChanged(width: Int, height: Int, unappliedRotationDegrees: Int, pixelWidthHeightRatio: Float) {
+                }
+                override fun onRenderedFirstFrame() {
+                }
+            })
             videoView.player = player
-            val dataSourceFactory = EncryptedFileDataSourceFactory(mCipher, SecretKeySpec(pass32, "SHA1PRNG"), IvParameterSpec(pass16), bandwidthMeter)
-            //val extractorsFactory = DefaultExtractorsFactory()
+
+            val byteArrayDataSource = ByteArrayDataSource(file.decrypted!!)
+            val audioByteUri = UriByteDataHelper().getUri(file.decrypted!!)
+            val dataSpec = DataSpec(audioByteUri)
             try {
-                val uri = Uri.fromFile(java.io.File(file.path))
-                //val videoSource = ExtractorMediaSource(uri, dataSourceFactory, extractorsFactory, null, null)
-                val videoSource = ExtractorMediaSource.Factory(dataSourceFactory).createMediaSource(uri)
-                player.prepare(videoSource)
-                player.playWhenReady = true
-            } catch (e: Exception) {
+                byteArrayDataSource.open(dataSpec)
+            } catch (e: IOException) {
                 e.printStackTrace()
             }
+
+            val factory = object : DataSource.Factory {
+                override fun createDataSource(): DataSource {
+                    return byteArrayDataSource
+                }
+            }
+
+            val mediaSource = ExtractorMediaSource(audioByteUri, factory, DefaultExtractorsFactory(), null, null)
+            player.prepare(mediaSource)
+            player.playWhenReady = true
+            player.volume = 0f
         }
-        ////////////////////////////////////////////////////////////////
+
+        class UriByteDataHelper {
+            fun getUri(data: ByteArray): Uri {
+                try {
+                    val url = URL(null, "bytes:///" + "media", BytesHandler(data))
+                    return Uri.parse(url.toURI().toString())
+                } catch (e: MalformedURLException) {
+                    throw RuntimeException(e)
+                } catch (e: URISyntaxException) {
+                    throw RuntimeException(e)
+                }
+
+            }
+
+            class BytesHandler(data: ByteArray) : URLStreamHandler() {
+                private var mData : ByteArray = data
+
+                override fun  openConnection(u : URL) : URLConnection {
+                    return ByteUrlConnection(u, mData)
+                }
+            }
+
+            class ByteUrlConnection(url: URL, data: ByteArray) : URLConnection(url) {
+                var mData: ByteArray = data
+
+                override fun connect() {}
+                override fun getInputStream(): InputStream {
+                    return ByteArrayInputStream(mData)
+                }
+            }
+        }
+        ////////////VIDEO TESTING//////////////////////////////////////////
 
         fun clearAnimation() {
             itemView.clearAnimation()
