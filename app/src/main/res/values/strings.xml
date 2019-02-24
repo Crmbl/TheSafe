@@ -30,4 +30,9 @@
     <string name="nothing_here">Nothing here…</string>
     <string name="close_image">close image</string>
     <string name="scroll_to_top">scroll to top</string>
+    <string name="play_button">play button</string>
+    <string name="pause_button">pause button</string>
+    <string name="quit_fullscreen">quit fullscreen</string>
+    <string name="volume_button">volume button</string>
+    <string name="mute_button">mute button</string>
 </resources>

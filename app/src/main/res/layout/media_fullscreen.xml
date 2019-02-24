@@ -5,7 +5,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_margin="20dp"
-                android:background="@color/colorBackground">
+                android:background="#000">
 
     <FrameLayout android:id="@+id/layout_lock"
                  android:layout_width="match_parent"
@@ -28,10 +28,14 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-    <VideoView android:id="@+id/video"
+    <com.google.android.exoplayer2.ui.PlayerView
+            android:id="@+id/video"
             android:visibility="gone"
+            android:layout_centerInParent="true"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
+            android:layout_height="match_parent"
+            app:resize_mode="fit"
+            app:controller_layout_id="@layout/exo_controller_fullscreen"/>
 
     <ImageButton
             android:id="@+id/ib_close"

@@ -1,7 +1,6 @@
 package com.crmbl.thesafe
 
 import android.content.Context
-import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,20 +15,17 @@ import com.google.android.material.button.MaterialButton
 import pl.droidsonroids.gif.GifDrawable
 import pl.droidsonroids.gif.GifImageView
 import com.google.android.exoplayer2.ExoPlayerFactory
+import com.google.android.exoplayer2.Player.REPEAT_MODE_ALL
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
-import java.io.ByteArrayInputStream
-import java.io.InputStream
-import java.net.*
-import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.source.ExtractorMediaSource
 import com.google.android.exoplayer2.upstream.DataSpec
 import com.google.android.exoplayer2.upstream.ByteArrayDataSource
 import com.google.android.exoplayer2.upstream.DataSource
-import com.google.android.exoplayer2.video.VideoListener
+import kotlinx.android.synthetic.main.exo_controller.view.*
 import java.io.IOException
 
 
-class ItemAdapter(private val context: Context, private val dataSource : MutableList<File>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class ItemAdapter(private val context: Context, private val dataSource : MutableList<File>, private val activity: MainActivity?) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val headerView = 0
     private val itemView = 1
@@ -53,7 +49,8 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
             }
         }
     }
-    class ItemViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
+
+    class ItemViewHolder(itemView: View, private val activity: MainActivity?): RecyclerView.ViewHolder(itemView) {
 
         private val textViewTitle : TextView = itemView.findViewById(R.id.textview_title)
         private val textViewExt : TextView = itemView.findViewById(R.id.textview_ext)
@@ -82,69 +79,28 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
             bottomLayout.layoutParams = params
         }
 
-        ////////////VIDEO TESTING//////////////////////////////////////////
         private fun playVideo(file: File, parent: RecyclerView) {
             val player = ExoPlayerFactory.newSimpleInstance(parent.context, DefaultTrackSelector())
-            player.addVideoListener(object: VideoListener {
-                override fun onVideoSizeChanged(width: Int, height: Int, unappliedRotationDegrees: Int, pixelWidthHeightRatio: Float) {
-                }
-                override fun onRenderedFirstFrame() {
-                }
-            })
             videoView.player = player
+            videoView.exo_fullscreen.setOnClickListener { v ->
+                videoView.exo_pause.performClick()
+                activity?.showPopup(v!!, 0, file)
+            }
 
             val byteArrayDataSource = ByteArrayDataSource(file.decrypted!!)
-            val audioByteUri = UriByteDataHelper().getUri(file.decrypted!!)
-            val dataSpec = DataSpec(audioByteUri)
-            try {
-                byteArrayDataSource.open(dataSpec)
-            } catch (e: IOException) {
-                e.printStackTrace()
-            }
+            val mediaByteUri = UriByteDataHelper().getUri(file.decrypted!!)
+            val dataSpec = DataSpec(mediaByteUri)
 
-            val factory = object : DataSource.Factory {
-                override fun createDataSource(): DataSource {
-                    return byteArrayDataSource
-                }
-            }
+            try { byteArrayDataSource.open(dataSpec) } catch (e: IOException) { e.printStackTrace() }
+            val factory = object : DataSource.Factory { override fun createDataSource(): DataSource { return byteArrayDataSource } }
 
-            val mediaSource = ExtractorMediaSource(audioByteUri, factory, DefaultExtractorsFactory(), null, null)
+            val mediaSource = ExtractorMediaSource.Factory(factory).createMediaSource(mediaByteUri)
             player.prepare(mediaSource)
             player.playWhenReady = true
             player.volume = 0f
+            player.repeatMode = REPEAT_MODE_ALL
+            videoView.hideController()
         }
-
-        class UriByteDataHelper {
-            fun getUri(data: ByteArray): Uri {
-                try {
-                    val url = URL(null, "bytes:///" + "media", BytesHandler(data))
-                    return Uri.parse(url.toURI().toString())
-                } catch (e: MalformedURLException) {
-                    throw RuntimeException(e)
-                } catch (e: URISyntaxException) {
-                    throw RuntimeException(e)
-                }
-
-            }
-
-            class BytesHandler(data: ByteArray) : URLStreamHandler() {
-                private var mData : ByteArray = data
-
-                override fun  openConnection(u : URL) : URLConnection {
-                    return ByteUrlConnection(u, mData)
-                }
-            }
-
-            class ByteUrlConnection(url: URL, data: ByteArray) : URLConnection(url) {
-                var mData: ByteArray = data
-
-                override fun connect() {}
-                override fun getInputStream(): InputStream {
-                    return ByteArrayInputStream(mData)
-                }
-            }
-        }
-        ////////////VIDEO TESTING//////////////////////////////////////////
 
         fun clearAnimation() {
             itemView.clearAnimation()
@@ -152,6 +108,8 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
     }
 
     //endregion
+
+    //region Override
 
     override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
         super.onAttachedToRecyclerView(recyclerView)
@@ -167,7 +125,7 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
             itemView -> {
                 val view: View = LayoutInflater.from(parent.context).inflate(R.layout.list_item, parent, false)
                 view.clipToOutline = true
-                return ItemViewHolder(view)
+                return ItemViewHolder(view, activity)
             }
             footerView -> {
                 val view: View = LayoutInflater.from(parent.context).inflate(R.layout.list_item_footer, parent, false)
@@ -220,6 +178,8 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
         if (holder is ItemViewHolder)
             holder.clearAnimation()
     }
+
+    //endregion Override
 
     private fun setAnimation(itemView: View, position: Int) {
         if (position > lastPosition) {

@@ -27,9 +27,9 @@ import com.beust.klaxon.Klaxon
 import com.github.ybq.android.spinkit.style.CubeGrid
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
+import kotlinx.android.synthetic.main.exo_controller.view.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import java.io.File
 
 
 class MainActivity : AppCompatActivity() {
@@ -43,7 +43,7 @@ class MainActivity : AppCompatActivity() {
     private var mapping : Folder? = null
     private var clickedChip : Chip? = null
     private var actualFolder : Folder? = null
-    private var files : MutableList<com.crmbl.thesafe.File>? = null
+    private var files : MutableList<File>? = null
     private var lastChip : Chip? = null
     private var adapter : ItemAdapter? = null
     private var fullScreen: FullScreenMedia? = null
@@ -60,7 +60,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var prefs : Prefs
     private lateinit var layoutManager : LinearLayoutManager
     private lateinit var broadcastReceiver: BroadcastReceiver
-    private lateinit var cryptedMapping : File
+    private lateinit var cryptedMapping : java.io.File
     private lateinit var cryptoUtil : CryptoUtil
 
     @SuppressLint("ClickableViewAccessibility")
@@ -206,7 +206,7 @@ class MainActivity : AppCompatActivity() {
                     files?.add(File("", "", null, "footer"))
             }
 
-            adapter = ItemAdapter(applicationContext, files!!)
+            adapter = ItemAdapter(applicationContext, files!!, this@MainActivity)
             recyclerView.adapter = adapter
 
             if (loadedFiles == actualFolderFiltered.count() && recyclerView.computeVerticalScrollRange() > recyclerView.height) {
@@ -340,8 +340,8 @@ class MainActivity : AppCompatActivity() {
             override fun onAnimationEnd(animation: Animation?) { bottomBar.visibility = View.INVISIBLE }
         })
 
-        if (loadedFiles == 0 || adapter!!.itemCount == 2) return
-        if (mapping != null && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount
+        if (loadedFiles == 0) return
+        if (mapping != null && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount -1
             && bottomBar.visibility == View.VISIBLE && scrollView.visibility == View.VISIBLE) {
             bottomBar.startAnimation(slideDown)
             scrollView.startAnimation(slideUp)
@@ -401,52 +401,51 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showPopup(view: View, position: Int) {
-        try
-        {
-            val file = files!![position]
-            if (file.type != "item") return
+    fun showPopup(view: View, position: Int, _file: File? = null) {
+        val file : File = _file ?: files!![position]
+        if (file.type != "item") return
 
-            popupDismissed = false
-            bottomBar.clearAnimation()
-            scrollView.clearAnimation()
-            bottomBar.visibility = View.INVISIBLE
-            scrollView.visibility = View.INVISIBLE
+        popupDismissed = false
+        bottomBar.clearAnimation()
+        scrollView.clearAnimation()
+        bottomBar.visibility = View.INVISIBLE
+        scrollView.visibility = View.INVISIBLE
 
-            fullScreen = FullScreenMedia(applicationContext, view, file.decrypted!!, file.originName.split('.').last())
-            val fadeIn = Fade(Fade.MODE_IN)
-            fadeIn.duration = 250
-            fadeIn.interpolator = AccelerateDecelerateInterpolator()
-            fullScreen?.enterTransition = fadeIn
+        fullScreen = FullScreenMedia(applicationContext, view, file.decrypted!!, file.originName.split('.').last())
+        val fadeIn = Fade(Fade.MODE_IN)
+        fadeIn.duration = 250
+        fadeIn.interpolator = AccelerateDecelerateInterpolator()
+        fullScreen?.enterTransition = fadeIn
 
-            val fadeOut = Fade(Fade.MODE_OUT)
-            fadeOut.duration = 250
-            fadeOut.interpolator = AccelerateDecelerateInterpolator()
-            fullScreen?.exitTransition = fadeOut
+        val fadeOut = Fade(Fade.MODE_OUT)
+        fadeOut.duration = 250
+        fadeOut.interpolator = AccelerateDecelerateInterpolator()
+        fullScreen?.exitTransition = fadeOut
 
-            fullScreen!!.setOnDismissListener {
-                popupDismissed = true
-                if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
-                    bottomBar.visibility = View.VISIBLE
-                    scrollView.visibility = View.VISIBLE
-                }
+        fullScreen!!.setOnDismissListener {
+            popupDismissed = true
+            if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
+                if (fullScreen!!.videoView.visibility != View.GONE)
+                    fullScreen!!.videoView.player.stop()
+
+                bottomBar.visibility = View.VISIBLE
+                scrollView.visibility = View.VISIBLE
             }
-            fullScreen!!.setTouchInterceptor(object: View.OnTouchListener{
-                var initialY : Float = 0f
-                @SuppressLint("ClickableViewAccessibility")
-                override fun onTouch(v: View?, event: MotionEvent?): Boolean {
-                    when {
-                        event?.action == MotionEvent.ACTION_DOWN -> initialY = event.y
-                        event?.action == MotionEvent.ACTION_UP -> {
-                            if (Math.abs(initialY - event.y) in 1700.0..2100.0)
-                                fullScreen?.dismiss()
-                        }
-                    }
-                    return false
-                }
-            })
         }
-        catch(ex: Exception) {}
+        fullScreen!!.setTouchInterceptor(object: View.OnTouchListener{
+            var initialY : Float = 0f
+            @SuppressLint("ClickableViewAccessibility")
+            override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+                when {
+                    event?.action == MotionEvent.ACTION_DOWN -> initialY = event.y
+                    event?.action == MotionEvent.ACTION_UP -> {
+                        if (Math.abs(initialY - event.y) in 1700.0..2100.0)
+                            fullScreen?.dismiss()
+                    }
+                }
+                return false
+            }
+        })
     }
 
     private fun searchQuery(query: String?) {
@@ -556,8 +555,11 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         if (!goSettings) {
             bottomBar.visibility = View.GONE
-            if (!popupDismissed)
+            if (!popupDismissed) {
                 fullScreen!!.lockLayout.visibility = View.VISIBLE
+                if (fullScreen!!.videoView.visibility == View.VISIBLE)
+                    fullScreen!!.videoView.exo_pause.performClick()
+            }
             else
                 lockLayout.visibility = View.VISIBLE
         }

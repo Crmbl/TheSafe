@@ -29,9 +29,9 @@
             android:layout_gravity="top"
             app:resize_mode="zoom"
             android:layout_alignParentTop="true"
+            app:controller_layout_id="@layout/exo_controller"
             android:background="@drawable/bg_listitem_rounded" />
 
-    <!--android:layout_below="@id/imageView"-->
     <LinearLayout android:id="@+id/bottom_layout"
             android:layout_width="match_parent"
             android:orientation="horizontal"
