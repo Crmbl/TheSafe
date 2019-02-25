@@ -235,6 +235,16 @@ class MainActivity : AppCompatActivity() {
                   if (i == loadLimit) break
                   for (realFile in theSafeFolder.listFiles()) {
                       if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
+                      //TODO add logo in app and app icon
+                      //TODO zoom not really cool when video in "fullscreen"
+                      //TODO error if big file, see below
+                      // If file is video, then create clear file, and give the path in File object
+                      // "OnChangingFolder" : delete every "clear" videos
+                      // "OnPause" but not fullscreen : delete every "clear" videos // release every OnAttached videoPlayer?
+                      // "OnResume" but not fullscreen : create the needed videos // check if file exists, else create it in Adapter
+                      // "OnPause" and in fullscreen : store the previous position and release videoPlayer
+                      // "OnResume" and in fullscreen : create the video and play from stored position
+                      // "OnDestroy": delete every "clear" videos
                           file.decrypted = cryptoUtil.decrypt(realFile)
                           loadedFiles++
                           files?.add(file)

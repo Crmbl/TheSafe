@@ -1,6 +1,8 @@
 package com.crmbl.thesafe
 
 import android.content.Context
+import android.content.res.Resources
+import android.graphics.drawable.BitmapDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,6 +18,7 @@ import pl.droidsonroids.gif.GifDrawable
 import pl.droidsonroids.gif.GifImageView
 import com.google.android.exoplayer2.ExoPlayerFactory
 import com.google.android.exoplayer2.Player.REPEAT_MODE_ALL
+import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.source.ExtractorMediaSource
 import com.google.android.exoplayer2.upstream.DataSpec
@@ -57,6 +60,7 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
         private val bottomLayout : LinearLayout = itemView.findViewById(R.id.bottom_layout)
         private val mediaView : GifImageView = itemView.findViewById(R.id.imageView)
         private val videoView : PlayerView = itemView.findViewById(R.id.videoView)
+        private var player: SimpleExoPlayer? = null
 
         fun bind(file : File, mRecyclerView: RecyclerView?) {
             val splitedName = file.originName.split('.')
@@ -65,22 +69,29 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
 
             val params = RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
 
-            val imageFileExtensions: Array<String> = arrayOf("gif", "png", "jpg", "jpeg", "bmp", "pdf")
-            if (imageFileExtensions.contains(splitedName.last().toLowerCase())) {
-                params.addRule(RelativeLayout.BELOW, R.id.imageView)
-                mediaView.visibility = View.VISIBLE
-                mediaView.setImageDrawable(GifDrawable(file.decrypted!!))
-            }
-            else if (file.originName.isNotEmpty()) {
-                params.addRule(RelativeLayout.BELOW, R.id.videoView)
-                videoView.visibility = View.VISIBLE
-                playVideo(file, mRecyclerView!!)
+            val imageFileExtensions: Array<String> = arrayOf("png", "jpg", "jpeg", "bmp", "pdf")
+            when {
+                splitedName.last().toLowerCase() == "gif" -> {
+                    params.addRule(RelativeLayout.BELOW, R.id.imageView)
+                    mediaView.visibility = View.VISIBLE
+                    mediaView.setImageDrawable(GifDrawable(file.decrypted!!))
+                }
+                imageFileExtensions.contains(splitedName.last().toLowerCase()) -> {
+                    params.addRule(RelativeLayout.BELOW, R.id.imageView)
+                    mediaView.visibility = View.VISIBLE
+                    mediaView.setImageDrawable(BitmapDrawable(Resources.getSystem(), file.decrypted!!.inputStream()))
+                }
+                file.originName.isNotEmpty() -> {
+                    params.addRule(RelativeLayout.BELOW, R.id.videoView)
+                    videoView.visibility = View.VISIBLE
+                    playVideo(file, mRecyclerView!!)
+                }
             }
             bottomLayout.layoutParams = params
         }
 
         private fun playVideo(file: File, parent: RecyclerView) {
-            val player = ExoPlayerFactory.newSimpleInstance(parent.context, DefaultTrackSelector())
+            player = ExoPlayerFactory.newSimpleInstance(parent.context, DefaultTrackSelector())
             videoView.player = player
             videoView.exo_fullscreen.setOnClickListener { v ->
                 videoView.exo_pause.performClick()
@@ -95,14 +106,22 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
             val factory = object : DataSource.Factory { override fun createDataSource(): DataSource { return byteArrayDataSource } }
 
             val mediaSource = ExtractorMediaSource.Factory(factory).createMediaSource(mediaByteUri)
-            player.prepare(mediaSource)
-            player.playWhenReady = true
-            player.volume = 0f
-            player.repeatMode = REPEAT_MODE_ALL
+            player?.prepare(mediaSource)
+            player?.playWhenReady = true
+            player?.volume = 0f
+            player?.repeatMode = REPEAT_MODE_ALL
             videoView.hideController()
         }
 
         fun clearAnimation() {
+            if (videoView.visibility != View.GONE)
+                videoView.exo_pause.performClick()
+            itemView.clearAnimation()
+        }
+
+        fun resumeVideo() {
+            if (videoView.visibility != View.GONE)
+                videoView.exo_play.performClick()
             itemView.clearAnimation()
         }
     }
@@ -174,9 +193,15 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
     }
 
     override fun onViewDetachedFromWindow(holder: RecyclerView.ViewHolder) {
-        super.onViewDetachedFromWindow(holder)
         if (holder is ItemViewHolder)
             holder.clearAnimation()
+        super.onViewDetachedFromWindow(holder)
+    }
+
+    override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
+        if (holder is ItemViewHolder)
+            holder.resumeVideo()
+        super.onViewAttachedToWindow(holder)
     }
 
     //endregion Override

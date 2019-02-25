@@ -16,12 +16,12 @@ import com.bumptech.glide.request.target.Target
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.source.ExtractorMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
-import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.exoplayer2.upstream.ByteArrayDataSource
 import com.google.android.exoplayer2.upstream.DataSpec
 import com.google.android.exoplayer2.video.VideoListener
 import kotlinx.android.synthetic.main.exo_controller_fullscreen.view.*
 import java.io.IOException
+
 
 @SuppressLint("ClickableViewAccessibility", "InflateParams")
 class FullScreenMedia(internal var mContext: Context, v: View, imageBytes: ByteArray, fileExt : String) :
@@ -32,7 +32,8 @@ class FullScreenMedia(internal var mContext: Context, v: View, imageBytes: ByteA
     internal var photoView: PhotoView
     internal var loading: ProgressBar
     internal var lockLayout: FrameLayout
-    internal var videoView: PlayerView
+    internal var videoView: ZoomableExoPlayerView
+    private var player: SimpleExoPlayer? = null
 
     init {
         elevation = 5.0f
@@ -88,54 +89,34 @@ class FullScreenMedia(internal var mContext: Context, v: View, imageBytes: ByteA
             }
             else -> {
                 videoView.visibility = View.VISIBLE
-                //ideoView.controllerAutoShow = false
-                val player = ExoPlayerFactory.newSimpleInstance(mContext, DefaultTrackSelector())
-                player.volume = 1f
 
-                //region Listeners
+                player = ExoPlayerFactory.newSimpleInstance(mContext, DefaultTrackSelector())
+                player?.volume = 1f
+                player?.playWhenReady = true
+                videoView.player = player
 
-                /*val scaleGestureListener = ScaleGestureDetector(mContext, ScaleGestureListener(videoView))
-                videoView.setOnTouchListener(object: View.OnTouchListener {
-                    override fun onTouch(v: View?, event: MotionEvent?): Boolean {
-                        scaleGestureListener.onTouchEvent(event)
-                        //v?.performClick()
-                        return true
-                    }
-                })
-                videoView.setOnClickListener {
-                    if (videoView.tag == true) {
-                        videoView.tag = false
-                        videoView.hideController()
-                    } else {
-                        videoView.tag = true
-                        videoView.showController()
-                    }
-                }*/
+                //region listeners
 
-                player.addVideoListener(object: VideoListener {
+                player?.addVideoListener(object: VideoListener {
                     override fun onVideoSizeChanged(width: Int, height: Int, unappliedRotationDegrees: Int, pixelWidthHeightRatio: Float) {}
                     override fun onRenderedFirstFrame() {
                         loading.setBackgroundColor(mContext.getColor(R.color.colorItemBackground))
                         loading.visibility = View.GONE
                         videoView.showController()
-                        videoView.tag = true
                     }
                 })
 
-                videoView.player = player
-                videoView.hideController()
                 videoView.exo_quit_fullscreen.setOnClickListener { this.dismiss() }
                 videoView.exo_mute.setOnClickListener {
-                    player.volume = 1f
+                    player?.volume = 1f
                     videoView.exo_mute.visibility = View.GONE
                     videoView.exo_volume.visibility = View.VISIBLE
                 }
                 videoView.exo_volume.setOnClickListener {
-                    player.volume = 0f
+                    player?.volume = 0f
                     videoView.exo_mute.visibility = View.VISIBLE
                     videoView.exo_volume.visibility = View.GONE
                 }
-
                 //endregion
 
                 val byteArrayDataSource = ByteArrayDataSource(imageBytes)
@@ -147,26 +128,15 @@ class FullScreenMedia(internal var mContext: Context, v: View, imageBytes: ByteA
                     override fun createDataSource(): com.google.android.exoplayer2.upstream.DataSource { return byteArrayDataSource } }
 
                 val mediaSource = ExtractorMediaSource.Factory(factory).createMediaSource(mediaByteUri)
-                player.prepare(mediaSource)
-                player.playWhenReady = true
+                player?.prepare(mediaSource)
             }
         }
 
         showAtLocation(v, Gravity.CENTER, 0, 0)
     }
 
-    class ScaleGestureListener(private val videoView: PlayerView) : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-        private var factor: Float = 1f
-
-        override fun onScale(detector: ScaleGestureDetector?): Boolean {
-            val scaleFactor : Float = detector?.scaleFactor!! - 1f
-            factor += scaleFactor
-            if (factor < 1) factor = 1f
-
-            videoView.scaleX = factor
-            videoView.scaleY = factor
-
-            return true
-        }
+    override fun dismiss() {
+        player?.release()
+        super.dismiss()
     }
 }
