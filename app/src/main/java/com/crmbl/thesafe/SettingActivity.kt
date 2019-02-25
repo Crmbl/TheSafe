@@ -45,6 +45,7 @@ class SettingActivity : AppCompatActivity() {
     private lateinit var saltField : TextInputLayout
     private lateinit var fadeIn : Animation
     private lateinit var fadeOut : Animation
+    private lateinit var theSafeFolder : java.io.File
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -110,6 +111,11 @@ class SettingActivity : AppCompatActivity() {
         val checkButton = findViewById<MaterialButton>(R.id.check_decrypt_button)
         checkButton.setOnClickListener{this.check()}
 
+        theSafeFolder = ContextCompat.getExternalFilesDirs(applicationContext, null)
+            .last{ f -> f.name == "files" && f.isDirectory }
+            .listFiles().first{ f -> f.name == "Download" && f.isDirectory }
+            .listFiles().first{ f -> f.name == ".blob" && f.isDirectory && f.isHidden }
+
         //TODO remove this !!!!
         binding.viewModel?.settingSalt = "DJsW3hb95dqG3uQg"
         binding.viewModel?.settingPassword = "99aXHaxXC76qsWUa"
@@ -148,7 +154,6 @@ class SettingActivity : AppCompatActivity() {
 
     private fun check() {
         val viewModel : SettingViewModel = binding.viewModel!!
-        val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[0]
 
         if (!theSafeFolder.isDirectory || !theSafeFolder.isHidden || theSafeFolder.name != ".blob") {
             val textViewError = findViewById<TextView>(R.id.textview_error)

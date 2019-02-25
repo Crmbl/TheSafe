@@ -3,6 +3,7 @@ package com.crmbl.thesafe
 import android.content.Context
 import android.content.res.Resources
 import android.graphics.drawable.BitmapDrawable
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -21,9 +22,7 @@ import com.google.android.exoplayer2.Player.REPEAT_MODE_ALL
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.source.ExtractorMediaSource
-import com.google.android.exoplayer2.upstream.DataSpec
-import com.google.android.exoplayer2.upstream.ByteArrayDataSource
-import com.google.android.exoplayer2.upstream.DataSource
+import com.google.android.exoplayer2.upstream.*
 import kotlinx.android.synthetic.main.exo_controller.view.*
 import java.io.IOException
 
@@ -72,16 +71,30 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
             val imageFileExtensions: Array<String> = arrayOf("png", "jpg", "jpeg", "bmp", "pdf")
             when {
                 splitedName.last().toLowerCase() == "gif" -> {
+                    if (player != null) {
+                        videoView.visibility = View.GONE
+                        player?.release()
+                    }
+
                     params.addRule(RelativeLayout.BELOW, R.id.imageView)
                     mediaView.visibility = View.VISIBLE
                     mediaView.setImageDrawable(GifDrawable(file.decrypted!!))
                 }
                 imageFileExtensions.contains(splitedName.last().toLowerCase()) -> {
+                    if (player != null) {
+                        videoView.visibility = View.GONE
+                        player?.release()
+                    }
+
                     params.addRule(RelativeLayout.BELOW, R.id.imageView)
                     mediaView.visibility = View.VISIBLE
                     mediaView.setImageDrawable(BitmapDrawable(Resources.getSystem(), file.decrypted!!.inputStream()))
                 }
                 file.originName.isNotEmpty() -> {
+                    if (mediaView.visibility != View.GONE) {
+                        mediaView.visibility = View.GONE
+                    }
+
                     params.addRule(RelativeLayout.BELOW, R.id.videoView)
                     videoView.visibility = View.VISIBLE
                     playVideo(file, mRecyclerView!!)
@@ -101,11 +114,12 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
             val byteArrayDataSource = ByteArrayDataSource(file.decrypted!!)
             val mediaByteUri = UriByteDataHelper().getUri(file.decrypted!!)
             val dataSpec = DataSpec(mediaByteUri)
-
             try { byteArrayDataSource.open(dataSpec) } catch (e: IOException) { e.printStackTrace() }
             val factory = object : DataSource.Factory { override fun createDataSource(): DataSource { return byteArrayDataSource } }
-
             val mediaSource = ExtractorMediaSource.Factory(factory).createMediaSource(mediaByteUri)
+
+            //val mediaSource = ExtractorMediaSource.Factory(DefaultDataSourceFactory(parent.context, "TheSafe")).createMediaSource(Uri.parse(file.path))
+
             player?.prepare(mediaSource)
             player?.playWhenReady = true
             player?.volume = 0f
@@ -122,7 +136,6 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
         fun resumeVideo() {
             if (videoView.visibility != View.GONE)
                 videoView.exo_play.performClick()
-            itemView.clearAnimation()
         }
     }
 

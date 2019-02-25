@@ -32,6 +32,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
 
+//TODO add logo in app and app icon
+//TODO zoom not really cool when video in "fullscreen"
 class MainActivity : AppCompatActivity() {
 
     private val loadLimit : Int = 5
@@ -62,6 +64,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var broadcastReceiver: BroadcastReceiver
     private lateinit var cryptedMapping : java.io.File
     private lateinit var cryptoUtil : CryptoUtil
+    private lateinit var theSafeFolder : java.io.File
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -160,6 +163,11 @@ class MainActivity : AppCompatActivity() {
         }
         catch(ex : Exception) { throw Exception("Error: ${ex.message}") }
 
+        theSafeFolder = ContextCompat.getExternalFilesDirs(applicationContext, null)
+            .last{ f -> f.name == "files" && f.isDirectory }
+            .listFiles().first{ f -> f.name == "Download" && f.isDirectory }
+            .listFiles().first{ f -> f.name == ".blob" && f.isDirectory && f.isHidden }
+
         //endregion init
     }
 
@@ -172,13 +180,35 @@ class MainActivity : AppCompatActivity() {
 
     private fun decryptFiles() = GlobalScope.launch {
         createChips(actualFolder!!)
-        val theSafeFolder = ContextCompat.getExternalFilesDirs(applicationContext, null)[1].listFiles()[0].listFiles()[0]
         val actualFolderFiltered = actualFolder?.files?.filter{f-> f.originName.toLowerCase().contains(query.toLowerCase())}
 
         for ((i, file) in actualFolderFiltered?.withIndex()!!) {
             if (i == loadLimit) break
             for (realFile in theSafeFolder.listFiles()) {
                 if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
+                    //TODO error if big file, see below
+                        // If file is video, then create clear file, and give the path in File object
+                            // "OnChangingFolder" : delete every "clear" videos
+                            // "OnPause" but not fullscreen : delete every "clear" videos // release every OnAttached videoPlayer?
+                            // "OnResume" but not fullscreen : create the needed videos // check if file exists, else create it in Adapter
+                            // "OnPause" and in fullscreen : store the previous position and release videoPlayer
+                            // "OnResume" and in fullscreen : create the video and play from stored position
+                            // "OnDestroy": delete every "clear" videos
+//                    val imageFileExtensions: Array<String> = arrayOf("gif", "png", "jpg", "jpeg", "bmp", "pdf")
+//                    if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase())) {
+//                        file.decrypted = cryptoUtil.decrypt(realFile)
+//                    } else {
+//                        val decryptedFolder = theSafeFolder.listFiles().first{ f -> f.name == "decrypted" && f.isDirectory }
+//                        val name = "${decryptedFolder.absolutePath}/${file.originName}"
+//
+//                        if (decryptedFolder.listFiles().none{ f -> f.name == name && f.isFile }) {
+//                            val decryptedFile : java.io.File = java.io.File(name)
+//                            cryptoUtil.decryptToFile(realFile, decryptedFile)
+//                        }
+//
+//                        file.path = name
+//                    }
+
                     file.decrypted = cryptoUtil.decrypt(realFile)
                     loadedFiles++
                 }
@@ -230,21 +260,27 @@ class MainActivity : AppCompatActivity() {
         if (loadedFiles != actualFolderFiltered?.count()) {
           recyclerView.postDelayed ({
               files?.removeAt(files!!.lastIndex)
-              val theSafeFolder = ContextCompat.getExternalFilesDirs(applicationContext, null)[1].listFiles()[0].listFiles()[0]
               for ((i, file) in actualFolderFiltered?.drop(loadedFiles)?.withIndex()!!) {
                   if (i == loadLimit) break
                   for (realFile in theSafeFolder.listFiles()) {
                       if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
-                      //TODO add logo in app and app icon
-                      //TODO zoom not really cool when video in "fullscreen"
-                      //TODO error if big file, see below
-                      // If file is video, then create clear file, and give the path in File object
-                      // "OnChangingFolder" : delete every "clear" videos
-                      // "OnPause" but not fullscreen : delete every "clear" videos // release every OnAttached videoPlayer?
-                      // "OnResume" but not fullscreen : create the needed videos // check if file exists, else create it in Adapter
-                      // "OnPause" and in fullscreen : store the previous position and release videoPlayer
-                      // "OnResume" and in fullscreen : create the video and play from stored position
-                      // "OnDestroy": delete every "clear" videos
+//                          val imageFileExtensions: Array<String> = arrayOf("gif", "png", "jpg", "jpeg", "bmp", "pdf")
+//                          if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase())) {
+//                              file.decrypted = cryptoUtil.decrypt(realFile)
+//                          } else {
+//                              val decryptedFolder = theSafeFolder.listFiles().first{ f -> f.name == "decrypted" && f.isDirectory }
+//                              val name = "${decryptedFolder.absolutePath}/${file.originName}"
+//
+//                              if (decryptedFolder.listFiles().none{ f -> f.name == name && f.isFile }) {
+//                                  val decryptedFile : java.io.File = java.io.File(name)
+//                                  cryptoUtil.decryptToFile(realFile, decryptedFile)
+//                              }
+//
+//                              file.path = name
+//                          }
+//                          loadedFiles++
+//                          files?.add(file)
+
                           file.decrypted = cryptoUtil.decrypt(realFile)
                           loadedFiles++
                           files?.add(file)
