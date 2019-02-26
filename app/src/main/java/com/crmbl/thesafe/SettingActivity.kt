@@ -22,6 +22,8 @@ import android.transition.Transition
 import android.view.View
 import android.widget.FrameLayout
 import androidx.core.content.ContextCompat
+import com.crmbl.thesafe.utils.CryptoUtil
+import com.crmbl.thesafe.viewModels.SettingViewModel
 import com.google.android.material.textfield.TextInputLayout
 import pl.droidsonroids.gif.GifImageView
 import java.io.File
@@ -80,7 +82,8 @@ class SettingActivity : AppCompatActivity() {
                 prefs.useFingerprint,
                 prefs.saltDecryptHash,
                 prefs.passwordDecryptHash,
-                prefs.firstLogin)
+                prefs.firstLogin
+            )
         }
 
         expand = AnimationUtils.loadAnimation(applicationContext, R.anim.expand)

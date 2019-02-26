@@ -24,6 +24,8 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.hardware.fingerprint.FingerprintManagerCompat
+import com.crmbl.thesafe.utils.StringUtil
+import com.crmbl.thesafe.viewModels.LoginViewModel
 import java.io.IOException
 import java.security.*
 import java.security.cert.CertificateException
@@ -79,7 +81,8 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
         rememberUsername = prefs.rememberUsername
         val useFingerprint = prefs.useFingerprint
         if (rememberUsername)
-            binding.viewModel = LoginViewModel(prefs.username, "", "",false, useFingerprint)
+            binding.viewModel =
+                LoginViewModel(prefs.username, "", "", false, useFingerprint)
         else
             binding.viewModel = LoginViewModel("", "", "", false, useFingerprint)
 

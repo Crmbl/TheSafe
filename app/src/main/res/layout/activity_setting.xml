@@ -6,7 +6,7 @@
         <import type="android.view.View"/>
         <variable
                 name="viewModel"
-                type="com.crmbl.thesafe.SettingViewModel" />
+                type="com.crmbl.thesafe.viewModels.SettingViewModel" />
     </data>
 
     <RelativeLayout android:id="@+id/setting_layout"

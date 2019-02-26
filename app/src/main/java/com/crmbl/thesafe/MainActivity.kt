@@ -24,6 +24,9 @@ import androidx.core.view.MotionEventCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.beust.klaxon.Klaxon
+import com.crmbl.thesafe.utils.CryptoUtil
+import com.crmbl.thesafe.utils.RecyclerItemClickListener
+import com.crmbl.thesafe.utils.RefAnimationListener
 import com.github.ybq.android.spinkit.style.CubeGrid
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
@@ -50,6 +53,7 @@ class MainActivity : AppCompatActivity() {
     private var adapter : ItemAdapter? = null
     private var fullScreen: FullScreenMedia? = null
     private var query: String = ""
+    private var imageFileExtensions: Array<String> = arrayOf("gif", "png", "jpg", "jpeg", "bmp", "pdf")
 
     private lateinit var recyclerView : RecyclerView
     private lateinit var lockLayout : FrameLayout
@@ -72,27 +76,45 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.hide()
         setAnimation()
 
-        //region init
-
         broadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(arg0: Context, intent: Intent) {
                 if (intent.action == "finish_MainActivity") { finish() }
             }
         }
         registerReceiver(broadcastReceiver, IntentFilter("finish_MainActivity"))
-
-        prefs = Prefs(this)
         setContentView(R.layout.activity_main)
 
+        prefs = Prefs(this)
         scrollView = findViewById(R.id.scrollView_chipgroup)
-        progressBar = findViewById(R.id.progress_bar)
-        progressBar.indeterminateDrawable = CubeGrid()
-        progressBar.visibility = View.VISIBLE
         bottomBar = findViewById(R.id.bar)
         lockLayout = findViewById(R.id.layout_lock)
         emptyLayout = findViewById(R.id.linearLayout_no_result)
         chipGroup = findViewById(R.id.chipgroup_folders)
         searchView = bottomBar.findViewById(R.id.searchview)
+
+        progressBar = findViewById(R.id.progress_bar)
+        progressBar.indeterminateDrawable = CubeGrid()
+        progressBar.visibility = View.VISIBLE
+
+        recyclerView = findViewById(R.id.recyclerview_main)
+        layoutManager = LinearLayoutManager(this)
+        recyclerView.layoutManager = layoutManager
+
+        val clearButton = searchView.findViewById<ImageView>(R.id.search_close_btn)
+        val goSettings = findViewById<ImageView>(R.id.imageview_go_settings)
+        val searchView = findViewById<SearchView>(R.id.searchview)
+
+        val editText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
+        editText.setTextColor(resources.getColor(R.color.colorBackground, theme))
+        editText.setHintTextColor(resources.getColor(R.color.colorHint, theme))
+
+        theSafeFolder = ContextCompat.getExternalFilesDirs(applicationContext, null)
+            .last{ f -> f.name == "files" && f.isDirectory }
+            .listFiles().first{ f -> f.name == "Download" && f.isDirectory }
+            .listFiles().first{ f -> f.name == ".blob" && f.isDirectory && f.isHidden }
+
+        //region listeners
+
         searchView.setOnQueryTextListener(object: SearchView.OnQueryTextListener {
             override fun onQueryTextChange(newText: String?): Boolean { return false }
             override fun onQueryTextSubmit(query: String?): Boolean {
@@ -100,82 +122,83 @@ class MainActivity : AppCompatActivity() {
                 return false
             }
         })
-        val clearButton = searchView.findViewById<ImageView>(R.id.search_close_btn)
+
         clearButton.setOnClickListener {
             searchView.setQuery("", false)
             searchQuery("")
         }
 
-        //region RecyclerView
-
-        recyclerView = findViewById(R.id.recyclerview_main)
-        layoutManager = LinearLayoutManager(this)
-        recyclerView.layoutManager = layoutManager
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
-                if (layoutManager.findLastCompletelyVisibleItemPosition() == files?.size!! -1)
-                    updateListView()
+                if (layoutManager.findLastCompletelyVisibleItemPosition() == files?.size!! -1) updateListView()
+                if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) showUi()
                 if (recyclerView.tag == "smoothScrolling") {
                     recyclerView.tag = ""
                     showUi()
                 }
             }
         })
+
         recyclerView.setOnTouchListener(object : View.OnTouchListener {
             var initialY : Float = 0f
+            var previouslyShown : Boolean = false
             @Suppress("DEPRECATION")
             override fun onTouch(v: View?, event: MotionEvent?): Boolean {
                 val action : Int = MotionEventCompat.getActionMasked(event)
                 when (action) {
                     MotionEvent.ACTION_DOWN -> initialY = event?.y!!
                     MotionEvent.ACTION_UP -> {
-                        if (initialY < event?.y!!) showUi()
-                        else if (initialY > event.y) hideUi()
+                        if (initialY < event?.y!!) {
+                            if (previouslyShown && layoutManager.findFirstCompletelyVisibleItemPosition() != 0) {
+                                hideUi()
+                            } else {
+                                showUi()
+                                previouslyShown = true
+                            }
+                        } else if (initialY > event.y && layoutManager.findFirstCompletelyVisibleItemPosition() != 0) {
+                            hideUi()
+                            previouslyShown = false
+                        }
                     }
                 }
                 return false
             }
         })
-        recyclerView.addOnItemTouchListener(RecyclerItemClickListener(this, recyclerView, object : RecyclerItemClickListener.OnItemClickListener {
-            override fun onLongItemClick(view: View?, position: Int) {}
-            override fun onItemClick(view: View, position: Int) { showPopup(view, position) }
-        }))
 
-        //endregion RecyclerView
+        recyclerView.addOnItemTouchListener(
+            RecyclerItemClickListener(
+                this,
+                recyclerView,
+                object : RecyclerItemClickListener.OnItemClickListener {
+                    override fun onLongItemClick(view: View?, position: Int) {}
+                    override fun onItemClick(view: View, position: Int) {
+                        showPopup(view, position)
+                    }
+                })
+        )
 
-        val goSettings = findViewById<ImageView>(R.id.imageview_go_settings)
         goSettings.setOnClickListener {this.goSettings()}
-        val searchView = findViewById<SearchView>(R.id.searchview)
-        val editText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
-        editText.setTextColor(resources.getColor(R.color.colorBackground, theme))
-        editText.setHintTextColor(resources.getColor(R.color.colorHint, theme))
 
+        //endregion listeners
+
+        decryptMappingFile()
+    }
+
+    private fun decryptMappingFile() = GlobalScope.launch {
         try{
             cryptoUtil = CryptoUtil(prefs.passwordDecryptHash, prefs.saltDecryptHash)
-            val theSafeFolder = ContextCompat.getExternalFilesDirs(this.applicationContext, null)[1].listFiles()[0].listFiles()[0]
             for (file in theSafeFolder.listFiles()) {
                 if (cryptoUtil.decipher(file.name) == "mapping.json")
                     cryptedMapping = file
             }
 
-            decryptMappingFile(cryptoUtil.decrypt(cryptedMapping)!!)
+            mapping = Klaxon().parse<Folder>(cryptoUtil.decrypt(cryptedMapping)!!.inputStream())
+            setParent(mapping!!)
+            actualFolder = mapping!!
+            decryptFiles()
         }
         catch(ex : Exception) { throw Exception("Error: ${ex.message}") }
-
-        theSafeFolder = ContextCompat.getExternalFilesDirs(applicationContext, null)
-            .last{ f -> f.name == "files" && f.isDirectory }
-            .listFiles().first{ f -> f.name == "Download" && f.isDirectory }
-            .listFiles().first{ f -> f.name == ".blob" && f.isDirectory && f.isHidden }
-
-        //endregion init
-    }
-
-    private fun decryptMappingFile(input : ByteArray) = GlobalScope.launch {
-        mapping = Klaxon().parse<Folder>(input.inputStream())
-        writeParent(mapping!!)
-        actualFolder = mapping!!
-        decryptFiles()
     }
 
     private fun decryptFiles() = GlobalScope.launch {
@@ -186,28 +209,10 @@ class MainActivity : AppCompatActivity() {
             if (i == loadLimit) break
             for (realFile in theSafeFolder.listFiles()) {
                 if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
-                    //TODO error if big file, see below
-                        // If file is video, then create clear file, and give the path in File object
-                            // "OnChangingFolder" : delete every "clear" videos
-                            // "OnPause" but not fullscreen : delete every "clear" videos // release every OnAttached videoPlayer?
-                            // "OnResume" but not fullscreen : create the needed videos // check if file exists, else create it in Adapter
-                            // "OnPause" and in fullscreen : store the previous position and release videoPlayer
-                            // "OnResume" and in fullscreen : create the video and play from stored position
-                            // "OnDestroy": delete every "clear" videos
-//                    val imageFileExtensions: Array<String> = arrayOf("gif", "png", "jpg", "jpeg", "bmp", "pdf")
-//                    if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase())) {
-//                        file.decrypted = cryptoUtil.decrypt(realFile)
-//                    } else {
-//                        val decryptedFolder = theSafeFolder.listFiles().first{ f -> f.name == "decrypted" && f.isDirectory }
-//                        val name = "${decryptedFolder.absolutePath}/${file.originName}"
-//
-//                        if (decryptedFolder.listFiles().none{ f -> f.name == name && f.isFile }) {
-//                            val decryptedFile : java.io.File = java.io.File(name)
-//                            cryptoUtil.decryptToFile(realFile, decryptedFile)
-//                        }
-//
-//                        file.path = name
-//                    }
+                    if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase()))
+                        file.type = "imageView"
+                    else
+                        file.type = "videoView"
 
                     file.decrypted = cryptoUtil.decrypt(realFile)
                     loadedFiles++
@@ -264,22 +269,10 @@ class MainActivity : AppCompatActivity() {
                   if (i == loadLimit) break
                   for (realFile in theSafeFolder.listFiles()) {
                       if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
-//                          val imageFileExtensions: Array<String> = arrayOf("gif", "png", "jpg", "jpeg", "bmp", "pdf")
-//                          if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase())) {
-//                              file.decrypted = cryptoUtil.decrypt(realFile)
-//                          } else {
-//                              val decryptedFolder = theSafeFolder.listFiles().first{ f -> f.name == "decrypted" && f.isDirectory }
-//                              val name = "${decryptedFolder.absolutePath}/${file.originName}"
-//
-//                              if (decryptedFolder.listFiles().none{ f -> f.name == name && f.isFile }) {
-//                                  val decryptedFile : java.io.File = java.io.File(name)
-//                                  cryptoUtil.decryptToFile(realFile, decryptedFile)
-//                              }
-//
-//                              file.path = name
-//                          }
-//                          loadedFiles++
-//                          files?.add(file)
+                          if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase()))
+                              file.type = "imageView"
+                          else
+                              file.type = "videoView"
 
                           file.decrypted = cryptoUtil.decrypt(realFile)
                           loadedFiles++
@@ -316,7 +309,7 @@ class MainActivity : AppCompatActivity() {
                 chip.isCheckedIconVisible = false
                 chip.elevation = 5f
                 chip.alpha = 0f
-                chip.setOnClickListener { goUp() }
+                chip.setOnClickListener { goBack() }
                 chipGroup.addView(chip)
                 val fadeIn = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_in_no_delay)
                 fadeIn.setAnimationListener(object : RefAnimationListener(chip) {
@@ -337,7 +330,7 @@ class MainActivity : AppCompatActivity() {
                 chip.isCheckable = false
                 chip.isCheckedIconVisible = false
                 chip.elevation = 5f
-                chip.setOnClickListener { v -> goDown(v as Chip) }
+                chip.setOnClickListener { v -> goForward(v as Chip) }
                 chip.alpha = 0f
                 chipGroup.addView(chip)
                 val fadeIn = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_in_no_delay)
@@ -394,14 +387,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun writeParent(parentFolder : Folder) {
+    private fun setParent(parentFolder : Folder) {
         for (folder in parentFolder.folders) {
-            folder.previous = parentFolder
-            writeParent(folder)
+            folder.parent = parentFolder
+            setParent(folder)
         }
     }
 
-    private fun goDown(_clickedChip : Chip) {
+    private fun goForward(_clickedChip : Chip) {
         this.clickedChip = _clickedChip
 
         for (i in 0..chipGroup.childCount) {
@@ -423,7 +416,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun goUp() {
+    private fun goBack() {
         if (scrollView.visibility != View.VISIBLE) {
             navigate(false)
         } else {
@@ -449,7 +442,7 @@ class MainActivity : AppCompatActivity() {
 
     fun showPopup(view: View, position: Int, _file: File? = null) {
         val file : File = _file ?: files!![position]
-        if (file.type != "item") return
+        if (file.type != "imageView" && file.type != "videoView") return
 
         popupDismissed = false
         bottomBar.clearAnimation()
@@ -519,7 +512,7 @@ class MainActivity : AppCompatActivity() {
             actualFolder = if (direction)
                 findFolder(clickedChip?.text)!!
             else
-                actualFolder?.previous?.copy()
+                actualFolder?.parent?.copy()
         }
 
         loadedFiles = 0
@@ -565,6 +558,8 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this@MainActivity, SettingActivity::class.java)
         startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@MainActivity).toBundle())
     }
+
+    //region override methods
 
     override fun onResume() {
         super.onResume()
@@ -618,6 +613,8 @@ class MainActivity : AppCompatActivity() {
         if (actualFolder == mapping)
             finish()
         else
-            goUp()
+            goBack()
     }
+
+    //endregion override methods
 }

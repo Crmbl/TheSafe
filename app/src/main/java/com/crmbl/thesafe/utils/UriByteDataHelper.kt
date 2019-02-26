@@ -1,9 +1,10 @@
-package com.crmbl.thesafe
+package com.crmbl.thesafe.utils
 
 import android.net.Uri
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.net.*
+
 
 class UriByteDataHelper {
     fun getUri(data: ByteArray): Uri {
@@ -27,7 +28,7 @@ class UriByteDataHelper {
     }
 
     class ByteUrlConnection(url: URL, data: ByteArray) : URLConnection(url) {
-        var mData: ByteArray = data
+        private var mData: ByteArray = data
 
         override fun connect() {}
         override fun getInputStream(): InputStream {

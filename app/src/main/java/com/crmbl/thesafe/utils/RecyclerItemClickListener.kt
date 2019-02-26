@@ -1,10 +1,11 @@
-package com.crmbl.thesafe
+package com.crmbl.thesafe.utils
 
 import android.content.Context
 import android.view.MotionEvent
 import androidx.recyclerview.widget.RecyclerView
 import android.view.GestureDetector
 import android.view.View
+import com.crmbl.thesafe.R
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.material.button.MaterialButton
 
@@ -36,9 +37,11 @@ class RecyclerItemClickListener(context: Context, recyclerView: RecyclerView, pr
 
     override fun onInterceptTouchEvent(view: RecyclerView, e: MotionEvent): Boolean {
         val childView = view.findChildViewUnder(e.x, e.y)
-        val isScrollUp = childView?.findViewById<MaterialButton>(R.id.button_scrollUp) != null
-        val isVideoView = childView?.findViewById<PlayerView>(R.id.videoView)?.visibility != View.GONE
-        if (childView != null && mListener != null && mGestureDetector.onTouchEvent(e) && !isScrollUp && !isVideoView) {
+        val isScrollUpView = childView?.findViewById<MaterialButton>(R.id.button_scrollUp) != null
+        val isVideoView = childView?.findViewById<PlayerView>(R.id.videoView) != null
+
+        if (childView != null && mListener != null && mGestureDetector.onTouchEvent(e)
+            && !isScrollUpView && !isVideoView) {
             mListener.onItemClick(childView, view.getChildAdapterPosition(childView))
             return true
         }

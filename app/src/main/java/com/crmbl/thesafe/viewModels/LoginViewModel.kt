@@ -1,7 +1,8 @@
-package com.crmbl.thesafe
+package com.crmbl.thesafe.viewModels
 
 import androidx.databinding.BaseObservable
 import androidx.databinding.Bindable
+import com.crmbl.thesafe.BR
 
 data class LoginViewModel(
     private var _username: String = "",

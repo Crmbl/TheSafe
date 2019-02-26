@@ -3,6 +3,7 @@ package com.crmbl.thesafe
 import android.content.Context
 import android.content.SharedPreferences
 
+
 @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
 class Prefs (context: Context) {
     private val PREFS_FILENAME = "com.crmbl.thesafe.prefs"

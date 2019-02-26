@@ -1,9 +1,10 @@
-package com.crmbl.thesafe
+package com.crmbl.thesafe.utils
 
 import java.io.UnsupportedEncodingException
 import java.security.DigestException
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
+
 
 class PasswordDeriveBytes(strPassword: String, rgbSalt: ByteArray, strHashName: String, iterations: Int) {
 

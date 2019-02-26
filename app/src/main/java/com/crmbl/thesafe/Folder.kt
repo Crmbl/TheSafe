@@ -10,5 +10,5 @@ data class Folder(
     @Json(name = "Files")
     var files : MutableList<File>,
     @Json(ignored = true)
-    var previous : Folder? = null
+    var parent : Folder? = null
 )

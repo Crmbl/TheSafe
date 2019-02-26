@@ -1,4 +1,4 @@
-package com.crmbl.thesafe
+package com.crmbl.thesafe.utils
 
 import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
@@ -32,7 +32,8 @@ data class CryptoUtil(
     }
 
     fun decrypt(inputFile : File) : ByteArray? {
-        val password = PasswordDeriveBytes(_password, _salt.toByteArray(Charsets.US_ASCII), "SHA1", 2)
+        val password =
+            PasswordDeriveBytes(_password, _salt.toByteArray(Charsets.US_ASCII), "SHA1", 2)
         val pass32: ByteArray = password.getBytes(32)
         val pass16: ByteArray = password.getBytes(16)
 
@@ -51,7 +52,8 @@ data class CryptoUtil(
     }
 
     fun decryptToFile(inputFile: java.io.File, decryptedFile: java.io.File) {
-        val password = PasswordDeriveBytes(_password, _salt.toByteArray(Charsets.US_ASCII), "SHA1", 2)
+        val password =
+            PasswordDeriveBytes(_password, _salt.toByteArray(Charsets.US_ASCII), "SHA1", 2)
         val pass32: ByteArray = password.getBytes(32)
         val pass16: ByteArray = password.getBytes(16)
 

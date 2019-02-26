@@ -6,7 +6,7 @@
         <import type="android.view.View"/>
         <variable
                 name="viewModel"
-                type="com.crmbl.thesafe.LoginViewModel" />
+                type="com.crmbl.thesafe.viewModels.LoginViewModel" />
     </data>
 
     <RelativeLayout android:id="@+id/login_rlayout"

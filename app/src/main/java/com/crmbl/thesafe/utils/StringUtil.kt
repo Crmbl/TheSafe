@@ -1,4 +1,4 @@
-package com.crmbl.thesafe
+package com.crmbl.thesafe.utils
 
 import java.math.BigInteger
 import java.security.MessageDigest
