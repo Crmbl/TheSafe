@@ -22,16 +22,8 @@
                 android:layout_gravity="center"/>
     </FrameLayout>
 
-    <com.github.chrisbanes.photoview.PhotoView
-            android:id="@+id/image"
-            android:visibility="gone"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-
-    <!--app:resize_mode="zoom"-->
     <com.crmbl.thesafe.ZoomableExoPlayerView
             android:id="@+id/video"
-            android:visibility="gone"
             android:layout_centerInParent="true"
             android:layout_width="match_parent"
             android:layout_height="match_parent"

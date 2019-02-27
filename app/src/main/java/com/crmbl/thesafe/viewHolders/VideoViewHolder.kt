@@ -1,11 +1,14 @@
 package com.crmbl.thesafe.viewHolders
 
 import android.view.View
+import android.widget.LinearLayout
+import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.crmbl.thesafe.File
 import com.crmbl.thesafe.MainActivity
 import com.crmbl.thesafe.R
+import com.crmbl.thesafe.listeners.ComposableVideoListener
 import com.crmbl.thesafe.utils.UriByteDataHelper
 import com.google.android.exoplayer2.ExoPlayerFactory
 import com.google.android.exoplayer2.Player
@@ -25,12 +28,16 @@ class VideoViewHolder(itemView: View, private val activity: MainActivity?): Recy
     private val textViewTitle : TextView = itemView.findViewById(R.id.textview_title)
     private val textViewExt : TextView = itemView.findViewById(R.id.textview_ext)
     private val videoView : PlayerView = itemView.findViewById(R.id.videoView)
+    private val bottomLayout : LinearLayout = itemView.findViewById(R.id.bottom_layout)
     private var player: SimpleExoPlayer? = null
 
     fun bind(file : File, mRecyclerView: RecyclerView?) {
         val splitedName = file.originName.split('.')
         textViewTitle.text = splitedName.first()
         textViewExt.text = splitedName.last()
+        var params = bottomLayout.layoutParams as RelativeLayout.LayoutParams
+        params.addRule(RelativeLayout.BELOW, R.id.waiting_frame)
+        bottomLayout.layoutParams = params
 
         player = ExoPlayerFactory.newSimpleInstance(mRecyclerView?.context, DefaultTrackSelector())
         videoView.player = player
@@ -51,6 +58,12 @@ class VideoViewHolder(itemView: View, private val activity: MainActivity?): Recy
         player?.volume = 0f
         player?.repeatMode = Player.REPEAT_MODE_ALL
         videoView.hideController()
+
+        player?.addVideoListener(ComposableVideoListener().onVideoSizeChanged { _, _, _, _ ->
+            params = bottomLayout.layoutParams as RelativeLayout.LayoutParams
+            params.addRule(RelativeLayout.BELOW, R.id.videoView)
+            bottomLayout.layoutParams = params
+        })
     }
 
     fun clearAnimation() {

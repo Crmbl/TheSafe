@@ -18,10 +18,11 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.transition.Fade
-import android.transition.Transition
 import android.view.View
 import android.widget.FrameLayout
 import androidx.core.content.ContextCompat
+import com.crmbl.thesafe.listeners.ComposableAnimationListener
+import com.crmbl.thesafe.listeners.ComposableTransitionListener
 import com.crmbl.thesafe.utils.CryptoUtil
 import com.crmbl.thesafe.viewModels.SettingViewModel
 import com.google.android.material.textfield.TextInputLayout
@@ -54,13 +55,8 @@ class SettingActivity : AppCompatActivity() {
         setAnimation()
 
         broadcastReceiver = object : BroadcastReceiver() {
-            override fun onReceive(arg0: Context, intent: Intent) {
-                val action = intent.action
-                if (action == "finish_SettingActivity") {
-                    finish()
-                }
-            }
-        }
+            override fun onReceive(arg0: Context, intent: Intent) { val action = intent.action
+                if (action == "finish_SettingActivity") finish() }}
         registerReceiver(broadcastReceiver, IntentFilter("finish_SettingActivity"))
 
         this.title = resources.getString(R.string.setting_field_title)
@@ -88,24 +84,16 @@ class SettingActivity : AppCompatActivity() {
 
         expand = AnimationUtils.loadAnimation(applicationContext, R.anim.expand)
         fadeIn = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_in)
-        fadeIn.setAnimationListener(object : Animation.AnimationListener {
-            override fun onAnimationRepeat(p0: Animation?) {}
-            override fun onAnimationEnd(p0: Animation?) {}
-            override fun onAnimationStart(p0: Animation?) {
-                passField.visibility = View.VISIBLE
-                saltField.visibility = View.VISIBLE
-            }
+        fadeIn.setAnimationListener(ComposableAnimationListener(onEnd = {_, _ -> }).onAnimationStart {
+            passField.visibility = View.VISIBLE
+            saltField.visibility = View.VISIBLE
         })
 
         fadeOut = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_out)
-        fadeOut.setAnimationListener(object : Animation.AnimationListener {
-            override fun onAnimationRepeat(p0: Animation?) {}
-            override fun onAnimationStart(p0: Animation?) {}
-            override fun onAnimationEnd(p0: Animation?) {
-                passField.visibility = View.INVISIBLE
-                saltField.visibility = View.INVISIBLE
-            }
-        })
+        fadeOut.setAnimationListener(ComposableAnimationListener(onEnd = {_, _ ->
+            passField.visibility = View.INVISIBLE
+            saltField.visibility = View.INVISIBLE
+        }))
 
         val saveButton = findViewById<MaterialButton>(R.id.setting_button_save)
         saveButton.setOnClickListener{this.save()}
@@ -231,18 +219,12 @@ class SettingActivity : AppCompatActivity() {
         fade.interpolator = AccelerateDecelerateInterpolator()
         window.exitTransition = fade
 
-        window.enterTransition.addListener(object : Transition.TransitionListener {
-            override fun onTransitionEnd(transition: Transition?) {
-                var intent = Intent("finish_LoginActivity")
-                sendBroadcast(intent)
-                intent = Intent("finish_MainActivity")
-                sendBroadcast(intent)
-            }
-            override fun onTransitionResume(transition: Transition?) {}
-            override fun onTransitionPause(transition: Transition?) {}
-            override fun onTransitionCancel(transition: Transition?) {}
-            override fun onTransitionStart(transition: Transition?) {}
-        })
+        window.enterTransition.addListener(ComposableTransitionListener(onEnd = {
+            var intent = Intent("finish_LoginActivity")
+            sendBroadcast(intent)
+            intent = Intent("finish_MainActivity")
+            sendBroadcast(intent)
+        }))
     }
 
     override fun onBackPressed() {

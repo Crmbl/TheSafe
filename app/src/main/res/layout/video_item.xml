@@ -12,6 +12,22 @@
                 android:background="@drawable/bg_listitem_rounded"
                 android:layout_height="wrap_content">
 
+    <FrameLayout android:id="@+id/waiting_frame"
+            android:layout_width="match_parent"
+            android:layout_height="165dp"
+            android:background="@drawable/bg_listitem_rounded">
+
+        <com.github.ybq.android.spinkit.SpinKitView
+                android:id="@+id/loading"
+                style="@style/SpinKitView.CubeGrid"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:elevation="10dp"
+                android:layout_gravity="center"
+                android:background="@color/colorItemBackgroundOpacity"
+                app:SpinKit_Color="@color/colorAccent" />
+    </FrameLayout>
+
     <com.google.android.exoplayer2.ui.PlayerView
             android:id="@+id/videoView"
             android:layout_width="match_parent"
@@ -23,8 +39,8 @@
             app:controller_layout_id="@layout/exo_controller"
             android:background="@drawable/bg_listitem_rounded" />
 
+    <!--android:layout_below="@id/videoView"-->
     <LinearLayout android:id="@+id/bottom_layout"
-                  android:layout_below="@id/videoView"
                   android:layout_width="match_parent"
                   android:orientation="horizontal"
                   android:layout_height="wrap_content"

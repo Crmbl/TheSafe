@@ -30,13 +30,10 @@ import com.crmbl.thesafe.utils.RecyclerItemClickListener
 import com.github.ybq.android.spinkit.style.CubeGrid
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
-import kotlinx.android.synthetic.main.exo_controller.view.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
 
-//TODO add logo in app and app icon
-//TODO zoom not really cool when video in "fullscreen"
 class MainActivity : AppCompatActivity() {
 
     private val loadLimit : Int = 5
@@ -51,7 +48,7 @@ class MainActivity : AppCompatActivity() {
     private var files : MutableList<File>? = null
     private var lastChip : Chip? = null
     private var adapter : ItemAdapter? = null
-    private var fullScreen: FullScreenMedia? = null
+    private var fullScreen: PopupWindow? = null
     private var query: String = ""
     private var imageFileExtensions: Array<String> = arrayOf("gif", "png", "jpg", "jpeg", "bmp", "pdf")
 
@@ -69,6 +66,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cryptedMapping : java.io.File
     private lateinit var cryptoUtil : CryptoUtil
     private lateinit var theSafeFolder : java.io.File
+
+    //region override methods
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -177,6 +176,62 @@ class MainActivity : AppCompatActivity() {
         decryptMappingFile()
     }
 
+    override fun onResume() {
+        super.onResume()
+
+        if (isPaused) {
+            if (!popupDismissed) {
+                if (fullScreen is FullScreenImage)
+                    (fullScreen!! as FullScreenImage).onResume()
+                if (fullScreen is FullScreenVideo)
+                    (fullScreen!! as FullScreenVideo).onResume()
+            }
+            else lockLayout.visibility = View.GONE
+
+            bottomBar.visibility = View.VISIBLE
+            scrollView.visibility = View.VISIBLE
+            isPaused = false
+            return
+        }
+
+        progressBar.animate().alpha(0f).setDuration(125).withEndAction{ progressBar.visibility = View.GONE }.start()
+        isPaused = true
+        val intent = Intent(this@MainActivity, LoginActivity::class.java)
+        intent.putExtra("previous", "MainActivity")
+        startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@MainActivity).toBundle())
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (!popupDismissed) fullScreen!!.dismiss()
+        unregisterReceiver(broadcastReceiver)
+    }
+
+    override fun onPause() {
+        if (!goSettings) {
+            bottomBar.visibility = View.GONE
+            if (!popupDismissed) {
+                if (fullScreen is FullScreenImage)
+                    (fullScreen!! as FullScreenImage).onPause()
+                if (fullScreen is FullScreenVideo)
+                    (fullScreen!! as FullScreenVideo).onPause()
+            }
+            else lockLayout.visibility = View.VISIBLE
+        }
+
+        goSettings = false
+        super.onPause()
+    }
+
+    override fun onBackPressed() {
+        if (actualFolder == mapping) finish()
+        else goBack()
+    }
+
+    //endregion override methods
+
+    //region async methods
+
     private fun decryptMappingFile() = GlobalScope.launch {
         try{
             cryptoUtil = CryptoUtil(prefs.passwordDecryptHash, prefs.saltDecryptHash)
@@ -243,42 +298,45 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    //TODO update the way the loader hides and stuff..
-    //what I tried here does not work. cryptoUtil.decrypt() async ? Generate event when all are decrypted ?
-    private fun updateListView() {
+    private fun updateListView() = GlobalScope.launch {
         val actualFolderFiltered = actualFolder?.files?.filter{f-> f.originName.toLowerCase().contains(query.toLowerCase())}
         if (loadedFiles != actualFolderFiltered?.count()) {
             val tmpFiles: MutableList<File> = mutableListOf()
-            //recyclerView.postDelayed ({
-                //files?.removeAt(files!!.lastIndex)
-                for ((i, file) in actualFolderFiltered?.drop(loadedFiles)?.withIndex()!!) {
-                    if (i == loadLimit) break
-                    for (realFile in theSafeFolder.listFiles()) {
-                        if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
-                            if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase()))
-                                file.type = "imageView"
-                            else
-                                file.type = "videoView"
+            for ((i, file) in actualFolderFiltered?.drop(loadedFiles)?.withIndex()!!) {
+                if (i == loadLimit) break
+                for (realFile in theSafeFolder.listFiles()) {
+                    if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
+                        if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase()))
+                            file.type = "imageView"
+                        else
+                            file.type = "videoView"
 
-                            file.decrypted = cryptoUtil.decrypt(realFile)
-                            loadedFiles++
-                            //files?.add(file)
-                            tmpFiles.add(file)
-                        }
+                        file.decrypted = cryptoUtil.decrypt(realFile)
+                        loadedFiles++
+                        tmpFiles.add(file)
+
+                        if (i == loadLimit -1 || file == actualFolderFiltered.last())
+                            showFiles(tmpFiles, actualFolderFiltered)
                     }
                 }
-
-                if (loadedFiles != actualFolderFiltered.count())
-                    tmpFiles.add(File("", "", null, "footer"))//files?.add(File("", "", null, "footer"))
-                else if (loadedFiles == actualFolderFiltered.count()
-                        && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount)
-                    tmpFiles.add(File("", "", null, "scrollUp"))//files?.add(File("", "", null, "scrollUp"))
-
-                files?.removeAt(files!!.lastIndex)
-                files?.addAll(tmpFiles)
-                adapter?.notifyDataSetChanged()
-            //}, 500)
+            }
         }
+    }
+
+    //endregion async methods
+
+    //region private methods
+
+    private fun showFiles(tmpFiles: MutableList<File>, actualFolderFiltered: List<File>) {
+        if (loadedFiles != actualFolderFiltered.count())
+            tmpFiles.add(File("", "", null, "footer"))
+        else if (loadedFiles == actualFolderFiltered.count()
+            && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount)
+            tmpFiles.add(File("", "", null, "scrollUp"))
+
+        files?.removeAt(files!!.lastIndex)
+        files?.addAll(tmpFiles)
+        runOnUiThread{ adapter?.notifyDataSetChanged() }
     }
 
     private fun createChips(originFolder : Folder) = GlobalScope.launch {
@@ -457,6 +515,8 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@MainActivity).toBundle())
     }
 
+    //endregion private methods
+
     fun showPopup(view: View, position: Int, _file: File? = null) {
         val file : File = _file ?: files!![position]
         if (file.type != "imageView" && file.type != "videoView") return
@@ -467,13 +527,15 @@ class MainActivity : AppCompatActivity() {
         bottomBar.visibility = View.INVISIBLE
         scrollView.visibility = View.INVISIBLE
 
-        fullScreen = FullScreenMedia(applicationContext, view, file.decrypted!!, file.originName.split('.').last())
+        when {
+            file.type == "imageView" -> fullScreen = FullScreenImage(applicationContext, view, file.decrypted!!, file.originName.split('.').last())
+            file.type == "videoView" -> fullScreen = FullScreenVideo(applicationContext, view, file.decrypted!!)
+        }
 
         val fadeIn = Fade(Fade.MODE_IN)
         fadeIn.duration = 250
         fadeIn.interpolator = AccelerateDecelerateInterpolator()
         fullScreen?.enterTransition = fadeIn
-
         val fadeOut = Fade(Fade.MODE_OUT)
         fadeOut.duration = 250
         fadeOut.interpolator = AccelerateDecelerateInterpolator()
@@ -481,9 +543,6 @@ class MainActivity : AppCompatActivity() {
 
         fullScreen!!.setOnDismissListener { popupDismissed = true
             if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
-                if (fullScreen!!.videoView.visibility != View.GONE)
-                    fullScreen!!.videoView.player.stop()
-
                 bottomBar.visibility = View.VISIBLE
                 scrollView.visibility = View.VISIBLE
             }
@@ -495,7 +554,7 @@ class MainActivity : AppCompatActivity() {
                 when {
                     event?.action == MotionEvent.ACTION_DOWN -> initialY = event.y
                     event?.action == MotionEvent.ACTION_UP -> {
-                        if (Math.abs(initialY - event.y) in 1700.0..2100.0)
+                        if (Math.abs(initialY - event.y) in 1600.0..2100.0)
                             fullScreen?.dismiss()
                     }
                 }
@@ -503,51 +562,4 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
-
-    //region override methods
-
-    override fun onResume() {
-        super.onResume()
-
-        if (isPaused) {
-            if (!popupDismissed) fullScreen!!.lockLayout.visibility = View.GONE
-            else lockLayout.visibility = View.GONE
-
-            bottomBar.visibility = View.VISIBLE
-            scrollView.visibility = View.VISIBLE
-            isPaused = false
-            return
-        }
-
-        progressBar.animate().alpha(0f).setDuration(125).withEndAction{ progressBar.visibility = View.GONE }.start()
-        isPaused = true
-        val intent = Intent(this@MainActivity, LoginActivity::class.java)
-        intent.putExtra("previous", "MainActivity")
-        startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@MainActivity).toBundle())
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        if (!popupDismissed) fullScreen!!.dismiss()
-        unregisterReceiver(broadcastReceiver)
-    }
-
-    override fun onPause() {
-        if (!goSettings) {
-            bottomBar.visibility = View.GONE
-            if (!popupDismissed) { fullScreen!!.lockLayout.visibility = View.VISIBLE
-                if (fullScreen!!.videoView.visibility == View.VISIBLE) fullScreen!!.videoView.exo_pause.performClick() }
-            else lockLayout.visibility = View.VISIBLE
-        }
-
-        goSettings = false
-        super.onPause()
-    }
-
-    override fun onBackPressed() {
-        if (actualFolder == mapping) finish()
-        else goBack()
-    }
-
-    //endregion override methods
 }

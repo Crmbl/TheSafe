@@ -24,6 +24,7 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.hardware.fingerprint.FingerprintManagerCompat
+import com.crmbl.thesafe.listeners.ComposableAnimationListener
 import com.crmbl.thesafe.utils.StringUtil
 import com.crmbl.thesafe.viewModels.LoginViewModel
 import java.io.IOException
@@ -65,13 +66,8 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
         setAnimation()
 
         broadcastReceiver = object : BroadcastReceiver() {
-            override fun onReceive(arg0: Context, intent: Intent) {
-                val action = intent.action
-                if (action == "finish_LoginActivity") {
-                    finish()
-                }
-            }
-        }
+            override fun onReceive(arg0: Context, intent: Intent) { val action = intent.action
+                if (action == "finish_LoginActivity") finish() }}
         registerReceiver(broadcastReceiver, IntentFilter("finish_LoginActivity"))
 
         //region init binding
@@ -112,44 +108,28 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
         loginButtonCancelF.setOnClickListener{this.hideLoginCard(true)}
         loginButtonGo.setOnClickListener{this.login()}
 
-        slideUp.setAnimationListener(object : Animation.AnimationListener {
-            override fun onAnimationRepeat(animation: Animation?) {}
-            override fun onAnimationEnd(animation: Animation?) {
-                handleFingerprint()
-            }
-            override fun onAnimationStart(animation: Animation?) {
-                isOpen = true
-                loginCard.visibility = View.VISIBLE
-                if (rememberUsername)
-                    binding.viewModel?.username = prefs.username
-                else
-                    binding.viewModel?.username = ""
-                binding.viewModel?.password = ""
-            }
+        slideUp.setAnimationListener(ComposableAnimationListener(onEnd = { _, _ ->
+            handleFingerprint()
+        }).onAnimationStart {
+            isOpen = true
+            loginCard.visibility = View.VISIBLE
+            if (rememberUsername)
+                binding.viewModel?.username = prefs.username
+            else
+                binding.viewModel?.username = ""
+            binding.viewModel?.password = ""
         })
 
-        slideDown.setAnimationListener(object : Animation.AnimationListener {
-            override fun onAnimationEnd(animation: Animation?) {
-                isOpen = false
-                loginCard.visibility = View.INVISIBLE
-            }
-            //region not used
-            override fun onAnimationRepeat(animation: Animation?) {}
-            override fun onAnimationStart(animation: Animation?) {}
-            //endregion
-        })
+        slideDown.setAnimationListener(ComposableAnimationListener(onEnd = { _, _ ->
+            isOpen = false
+            loginCard.visibility = View.INVISIBLE
+        }))
 
-        slideLogin.setAnimationListener(object : Animation.AnimationListener {
-            override fun onAnimationEnd(p0: Animation?) {
-                isOpen = false
-                loginCard.visibility = View.INVISIBLE
-                handleLogin()
-            }
-            //region not used
-            override fun onAnimationRepeat(p0: Animation?) {}
-            override fun onAnimationStart(p0: Animation?) {}
-            //endregion
-        })
+        slideLogin.setAnimationListener(ComposableAnimationListener(onEnd = { _, _ ->
+            isOpen = false
+            loginCard.visibility = View.INVISIBLE
+            handleLogin()
+        }))
 
         expand = AnimationUtils.loadAnimation(applicationContext, R.anim.expand)
         expandXY = AnimationUtils.loadAnimation(applicationContext, R.anim.expand_xy)
