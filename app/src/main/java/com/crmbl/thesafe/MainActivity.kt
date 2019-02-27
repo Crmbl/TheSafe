@@ -8,7 +8,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 import android.transition.Fade
-import android.transition.Transition
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
@@ -24,9 +23,10 @@ import androidx.core.view.MotionEventCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.beust.klaxon.Klaxon
+import com.crmbl.thesafe.listeners.ComposableAnimationListener
+import com.crmbl.thesafe.listeners.ComposableTransitionListener
 import com.crmbl.thesafe.utils.CryptoUtil
 import com.crmbl.thesafe.utils.RecyclerItemClickListener
-import com.crmbl.thesafe.utils.RefAnimationListener
 import com.github.ybq.android.spinkit.style.CubeGrid
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
@@ -117,10 +117,7 @@ class MainActivity : AppCompatActivity() {
 
         searchView.setOnQueryTextListener(object: SearchView.OnQueryTextListener {
             override fun onQueryTextChange(newText: String?): Boolean { return false }
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                searchQuery(query)
-                return false
-            }
+            override fun onQueryTextSubmit(query: String?): Boolean { searchQuery(query); return false }
         })
 
         clearButton.setOnClickListener {
@@ -129,8 +126,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                super.onScrolled(recyclerView, dx, dy)
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) { super.onScrolled(recyclerView, dx, dy)
                 if (layoutManager.findLastCompletelyVisibleItemPosition() == files?.size!! -1) updateListView()
                 if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) showUi()
                 if (recyclerView.tag == "smoothScrolling") {
@@ -143,6 +139,7 @@ class MainActivity : AppCompatActivity() {
         recyclerView.setOnTouchListener(object : View.OnTouchListener {
             var initialY : Float = 0f
             var previouslyShown : Boolean = false
+
             @Suppress("DEPRECATION")
             override fun onTouch(v: View?, event: MotionEvent?): Boolean {
                 val action : Int = MotionEventCompat.getActionMasked(event)
@@ -166,16 +163,11 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        recyclerView.addOnItemTouchListener(
-            RecyclerItemClickListener(
-                this,
-                recyclerView,
-                object : RecyclerItemClickListener.OnItemClickListener {
-                    override fun onLongItemClick(view: View?, position: Int) {}
-                    override fun onItemClick(view: View, position: Int) {
-                        showPopup(view, position)
-                    }
-                })
+        recyclerView.addOnItemTouchListener(RecyclerItemClickListener(this, recyclerView,
+            object: RecyclerItemClickListener.OnItemClickListener{
+                override fun onLongItemClick(view: View?, position: Int) {}
+                override fun onItemClick(view: View, position: Int) { showPopup(view, position) }
+            })
         )
 
         goSettings.setOnClickListener {this.goSettings()}
@@ -225,25 +217,18 @@ class MainActivity : AppCompatActivity() {
                 progressBar.animate().alpha(0f).setDuration(125).withEndAction{
                     progressBar.visibility = View.GONE
                     progressBar.alpha = 1f
-
-                    if (recyclerView.visibility != View.VISIBLE) {
-                        recyclerView.visibility = View.VISIBLE
-                    }
+                    if (recyclerView.visibility != View.VISIBLE) recyclerView.visibility = View.VISIBLE
                 }.start()
             }
 
-            if (actualFolderFiltered.count() == 0)
-                files = actualFolderFiltered.toMutableList()
-            else {
-                files = actualFolderFiltered.take(loadedFiles).toMutableList()
+            if (actualFolderFiltered.count() == 0) files = actualFolderFiltered.toMutableList()
+            else { files = actualFolderFiltered.take(loadedFiles).toMutableList()
                 files?.add(0, File("", "", null, "header"))
-                if (loadedFiles != actualFolderFiltered.count())
-                    files?.add(File("", "", null, "footer"))
+                if (loadedFiles != actualFolderFiltered.count()) files?.add(File("", "", null, "footer"))
             }
 
             adapter = ItemAdapter(applicationContext, files!!, this@MainActivity)
             recyclerView.adapter = adapter
-
             if (loadedFiles == actualFolderFiltered.count() && recyclerView.computeVerticalScrollRange() > recyclerView.height) {
                 files?.add(File("", "", null, "scrollUp"))
                 adapter?.notifyDataSetChanged()
@@ -253,42 +238,46 @@ class MainActivity : AppCompatActivity() {
             if (actualFolderFiltered.count() == 0) {
                 emptyLayout.alpha = 0f
                 emptyLayout.visibility = View.VISIBLE
-                emptyLayout.animate().alpha(1f).setDuration(125).withEndAction{
-                    emptyLayout.alpha = 1f
-                }.start()
+                emptyLayout.animate().alpha(1f).setDuration(125).withEndAction{ emptyLayout.alpha = 1f }.start()
             }
         }
     }
 
+    //TODO update the way the loader hides and stuff..
+    //what I tried here does not work. cryptoUtil.decrypt() async ? Generate event when all are decrypted ?
     private fun updateListView() {
         val actualFolderFiltered = actualFolder?.files?.filter{f-> f.originName.toLowerCase().contains(query.toLowerCase())}
         if (loadedFiles != actualFolderFiltered?.count()) {
-          recyclerView.postDelayed ({
-              files?.removeAt(files!!.lastIndex)
-              for ((i, file) in actualFolderFiltered?.drop(loadedFiles)?.withIndex()!!) {
-                  if (i == loadLimit) break
-                  for (realFile in theSafeFolder.listFiles()) {
-                      if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
-                          if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase()))
-                              file.type = "imageView"
-                          else
-                              file.type = "videoView"
+            val tmpFiles: MutableList<File> = mutableListOf()
+            //recyclerView.postDelayed ({
+                //files?.removeAt(files!!.lastIndex)
+                for ((i, file) in actualFolderFiltered?.drop(loadedFiles)?.withIndex()!!) {
+                    if (i == loadLimit) break
+                    for (realFile in theSafeFolder.listFiles()) {
+                        if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
+                            if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase()))
+                                file.type = "imageView"
+                            else
+                                file.type = "videoView"
 
-                          file.decrypted = cryptoUtil.decrypt(realFile)
-                          loadedFiles++
-                          files?.add(file)
-                      }
-                  }
-              }
+                            file.decrypted = cryptoUtil.decrypt(realFile)
+                            loadedFiles++
+                            //files?.add(file)
+                            tmpFiles.add(file)
+                        }
+                    }
+                }
 
-              if (loadedFiles != actualFolderFiltered.count())
-                  files?.add(File("", "", null, "footer"))
-              else if (loadedFiles == actualFolderFiltered.count()
-                  && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount)
-                  files?.add(File("", "", null, "scrollUp"))
+                if (loadedFiles != actualFolderFiltered.count())
+                    tmpFiles.add(File("", "", null, "footer"))//files?.add(File("", "", null, "footer"))
+                else if (loadedFiles == actualFolderFiltered.count()
+                        && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount)
+                    tmpFiles.add(File("", "", null, "scrollUp"))//files?.add(File("", "", null, "scrollUp"))
 
-              adapter?.notifyDataSetChanged()
-          }, 500)
+                files?.removeAt(files!!.lastIndex)
+                files?.addAll(tmpFiles)
+                adapter?.notifyDataSetChanged()
+            //}, 500)
         }
     }
 
@@ -312,11 +301,7 @@ class MainActivity : AppCompatActivity() {
                 chip.setOnClickListener { goBack() }
                 chipGroup.addView(chip)
                 val fadeIn = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_in_no_delay)
-                fadeIn.setAnimationListener(object : RefAnimationListener(chip) {
-                    override fun onAnimationRepeat(animation: Animation?) {}
-                    override fun onAnimationStart(animation: Animation?) {}
-                    override fun onAnimationEnd(animation: Animation?) { this.view.alpha = 1f }
-                })
+                fadeIn.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view:View? -> view?.alpha = 1f }))
                 chip.startAnimation(fadeIn)
                 index++
             }
@@ -334,11 +319,7 @@ class MainActivity : AppCompatActivity() {
                 chip.alpha = 0f
                 chipGroup.addView(chip)
                 val fadeIn = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_in_no_delay)
-                fadeIn.setAnimationListener(object : RefAnimationListener(chip) {
-                    override fun onAnimationRepeat(animation: Animation?) {}
-                    override fun onAnimationStart(animation: Animation?) {}
-                    override fun onAnimationEnd(animation: Animation?) { this.view.alpha = 1f }
-                })
+                fadeIn.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view:View? -> view?.alpha = 1f }))
                 chip.postDelayed({ chip.startAnimation(fadeIn) }, index * 50L)
                 index++
             }
@@ -347,17 +328,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun showUi() {
         val slideUp = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_up_bottombar)
-        slideUp.setAnimationListener(object : Animation.AnimationListener { //region useless stuff
-            override fun onAnimationRepeat(animation: Animation?) {}
-            override fun onAnimationStart(animation: Animation?) {} //endregion
-            override fun onAnimationEnd(animation: Animation?) { bottomBar.visibility = View.VISIBLE }
-        })
+        slideUp.setAnimationListener(ComposableAnimationListener(onEnd = { _: Animation?, _: View? -> bottomBar.visibility = View.VISIBLE }))
         val slideDown = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_down_topbar)
-        slideDown.setAnimationListener(object : Animation.AnimationListener { //region useless stuff
-            override fun onAnimationRepeat(animation: Animation?) {}
-            override fun onAnimationStart(animation: Animation?) {} //endregion
-            override fun onAnimationEnd(animation: Animation?) { scrollView.visibility = View.VISIBLE }
-        })
+        slideDown.setAnimationListener(ComposableAnimationListener(onEnd = { _: Animation?, _: View? -> scrollView.visibility = View.VISIBLE }))
 
         if (mapping != null && bottomBar.visibility == View.INVISIBLE && scrollView.visibility == View.INVISIBLE) {
             bottomBar.startAnimation(slideUp)
@@ -367,17 +340,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun hideUi() {
         val slideUp = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_up_topbar)
-        slideUp.setAnimationListener(object : Animation.AnimationListener { //region useless stuff
-            override fun onAnimationRepeat(animation: Animation?) {}
-            override fun onAnimationStart(animation: Animation?) {} //endregions
-            override fun onAnimationEnd(animation: Animation?) { scrollView.visibility = View.INVISIBLE }
-        })
+        slideUp.setAnimationListener(ComposableAnimationListener(onEnd = { _: Animation?, _: View? -> scrollView.visibility = View.INVISIBLE }))
         val slideDown = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_down_bottombar)
-        slideDown.setAnimationListener(object : Animation.AnimationListener { //region useless stuff
-            override fun onAnimationRepeat(animation: Animation?) {}
-            override fun onAnimationStart(animation: Animation?) {} //endregion
-            override fun onAnimationEnd(animation: Animation?) { bottomBar.visibility = View.INVISIBLE }
-        })
+        slideDown.setAnimationListener(ComposableAnimationListener(onEnd = { _: Animation?, _: View? -> bottomBar.visibility = View.INVISIBLE }))
 
         if (loadedFiles == 0) return
         if (mapping != null && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount -1
@@ -400,15 +365,11 @@ class MainActivity : AppCompatActivity() {
         for (i in 0..chipGroup.childCount) {
             val chip : Chip = chipGroup.findViewById(i) ?: return
             val fadeOut = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_out)
-            fadeOut.setAnimationListener(object : RefAnimationListener(chip) {
-                override fun onAnimationRepeat(animation: Animation?) {}
-                override fun onAnimationStart(animation: Animation?) {}
-                override fun onAnimationEnd(animation: Animation?) {
-                    this.view.visibility = View.INVISIBLE
-                    if (this.view as Chip == lastChip)
-                        navigate(true)
-                }
-            })
+
+            fadeOut.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view: View? ->
+                view?.visibility = View.INVISIBLE
+                if (view as Chip == lastChip) navigate(true)
+            }))
             chip.postDelayed({ chip.startAnimation(fadeOut) }, i * 50L)
 
             if (i == chipGroup.childCount -1)
@@ -417,74 +378,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun goBack() {
-        if (scrollView.visibility != View.VISIBLE) {
+        if (scrollView.visibility != View.VISIBLE)
             navigate(false)
-        } else {
+        else {
             for (i in 0..chipGroup.childCount) {
                 val chip : Chip = chipGroup.findViewById(i) ?: return
                 val fadeOut = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_out)
-                fadeOut.setAnimationListener(object : RefAnimationListener(chip) {
-                    override fun onAnimationRepeat(animation: Animation?) {}
-                    override fun onAnimationStart(animation: Animation?) {}
-                    override fun onAnimationEnd(animation: Animation?) {
-                        this.view.visibility = View.INVISIBLE
-                        if (this.view as Chip == lastChip)
-                            navigate(false)
-                    }
-                })
+
+                fadeOut.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view: View? ->
+                    view?.visibility = View.INVISIBLE
+                    if (view as Chip == lastChip) navigate(false)
+                }))
                 chip.postDelayed({ chip.startAnimation(fadeOut) }, i * 50L)
 
                 if (i == chipGroup.childCount -1)
                     lastChip = chip
             }
         }
-    }
-
-    fun showPopup(view: View, position: Int, _file: File? = null) {
-        val file : File = _file ?: files!![position]
-        if (file.type != "imageView" && file.type != "videoView") return
-
-        popupDismissed = false
-        bottomBar.clearAnimation()
-        scrollView.clearAnimation()
-        bottomBar.visibility = View.INVISIBLE
-        scrollView.visibility = View.INVISIBLE
-
-        fullScreen = FullScreenMedia(applicationContext, view, file.decrypted!!, file.originName.split('.').last())
-        val fadeIn = Fade(Fade.MODE_IN)
-        fadeIn.duration = 250
-        fadeIn.interpolator = AccelerateDecelerateInterpolator()
-        fullScreen?.enterTransition = fadeIn
-
-        val fadeOut = Fade(Fade.MODE_OUT)
-        fadeOut.duration = 250
-        fadeOut.interpolator = AccelerateDecelerateInterpolator()
-        fullScreen?.exitTransition = fadeOut
-
-        fullScreen!!.setOnDismissListener {
-            popupDismissed = true
-            if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
-                if (fullScreen!!.videoView.visibility != View.GONE)
-                    fullScreen!!.videoView.player.stop()
-
-                bottomBar.visibility = View.VISIBLE
-                scrollView.visibility = View.VISIBLE
-            }
-        }
-        fullScreen!!.setTouchInterceptor(object: View.OnTouchListener{
-            var initialY : Float = 0f
-            @SuppressLint("ClickableViewAccessibility")
-            override fun onTouch(v: View?, event: MotionEvent?): Boolean {
-                when {
-                    event?.action == MotionEvent.ACTION_DOWN -> initialY = event.y
-                    event?.action == MotionEvent.ACTION_UP -> {
-                        if (Math.abs(initialY - event.y) in 1700.0..2100.0)
-                            fullScreen?.dismiss()
-                    }
-                }
-                return false
-            }
-        })
     }
 
     private fun searchQuery(query: String?) {
@@ -494,25 +404,21 @@ class MainActivity : AppCompatActivity() {
 
     private fun navigate(direction : Boolean?) {
         emptyLayout.animate().alpha(0f).setDuration(125).withEndAction{
-            emptyLayout.visibility = View.INVISIBLE
-            emptyLayout.alpha = 1f
-        }.start()
+            emptyLayout.visibility = View.INVISIBLE; emptyLayout.alpha = 1f }.start()
+
         recyclerView.animate().alpha(0f).setDuration(125).withEndAction{
-            recyclerView.visibility = View.INVISIBLE
-            recyclerView.alpha = 1f
-        }.start()
+            recyclerView.visibility = View.INVISIBLE; recyclerView.alpha = 1f }.start()
+
         progressBar.alpha = 0f
         progressBar.visibility = View.VISIBLE
-        progressBar.animate().alpha(1f).setDuration(125).withEndAction{
-            progressBar.alpha = 1f
-        }.setStartDelay(125).start()
+        progressBar.animate().alpha(1f).setDuration(125).withEndAction{ progressBar.alpha = 1f }.setStartDelay(125).start()
 
         chipGroup.removeAllViews()
         if (direction != null) {
             actualFolder = if (direction)
-                findFolder(clickedChip?.text)!!
-            else
-                actualFolder?.parent?.copy()
+                                findFolder(clickedChip?.text)!!
+                            else
+                                actualFolder?.parent?.copy()
         }
 
         loadedFiles = 0
@@ -520,10 +426,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun findFolder(text : CharSequence?) : Folder? {
-        for (folder in actualFolder?.folders!!) {
-            if (folder.name == text)
-                return folder
-        }
+        for (folder in actualFolder?.folders!!)
+            if (folder.name == text) return folder
 
         throw NotImplementedError("Oups error :( , did not find a folder with name : $text in ${actualFolder?.name}")
     }
@@ -539,18 +443,12 @@ class MainActivity : AppCompatActivity() {
         fadeOut.interpolator = AccelerateDecelerateInterpolator()
         window.exitTransition = fadeOut
 
-        window.enterTransition.addListener(object : Transition.TransitionListener {
-            override fun onTransitionEnd(transition: Transition?) {
-                var intent = Intent("finish_LoginActivity")
-                sendBroadcast(intent)
-                intent = Intent("finish_SettingActivity")
-                sendBroadcast(intent)
-            }
-            override fun onTransitionResume(transition: Transition?) {}
-            override fun onTransitionPause(transition: Transition?) {}
-            override fun onTransitionCancel(transition: Transition?) {}
-            override fun onTransitionStart(transition: Transition?) {}
-        })
+        window.enterTransition.addListener(ComposableTransitionListener(onEnd = {
+            var intent = Intent("finish_LoginActivity")
+            sendBroadcast(intent)
+            intent = Intent("finish_SettingActivity")
+            sendBroadcast(intent)
+        }))
     }
 
     private fun goSettings() {
@@ -559,26 +457,69 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@MainActivity).toBundle())
     }
 
+    fun showPopup(view: View, position: Int, _file: File? = null) {
+        val file : File = _file ?: files!![position]
+        if (file.type != "imageView" && file.type != "videoView") return
+
+        popupDismissed = false
+        bottomBar.clearAnimation()
+        scrollView.clearAnimation()
+        bottomBar.visibility = View.INVISIBLE
+        scrollView.visibility = View.INVISIBLE
+
+        fullScreen = FullScreenMedia(applicationContext, view, file.decrypted!!, file.originName.split('.').last())
+
+        val fadeIn = Fade(Fade.MODE_IN)
+        fadeIn.duration = 250
+        fadeIn.interpolator = AccelerateDecelerateInterpolator()
+        fullScreen?.enterTransition = fadeIn
+
+        val fadeOut = Fade(Fade.MODE_OUT)
+        fadeOut.duration = 250
+        fadeOut.interpolator = AccelerateDecelerateInterpolator()
+        fullScreen?.exitTransition = fadeOut
+
+        fullScreen!!.setOnDismissListener { popupDismissed = true
+            if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
+                if (fullScreen!!.videoView.visibility != View.GONE)
+                    fullScreen!!.videoView.player.stop()
+
+                bottomBar.visibility = View.VISIBLE
+                scrollView.visibility = View.VISIBLE
+            }
+        }
+
+        fullScreen!!.setTouchInterceptor(object: View.OnTouchListener{ var initialY : Float = 0f
+            @SuppressLint("ClickableViewAccessibility")
+            override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+                when {
+                    event?.action == MotionEvent.ACTION_DOWN -> initialY = event.y
+                    event?.action == MotionEvent.ACTION_UP -> {
+                        if (Math.abs(initialY - event.y) in 1700.0..2100.0)
+                            fullScreen?.dismiss()
+                    }
+                }
+                return false
+            }
+        })
+    }
+
     //region override methods
 
     override fun onResume() {
         super.onResume()
 
         if (isPaused) {
-            if (!popupDismissed)
-                fullScreen!!.lockLayout.visibility = View.GONE
-            else
-                lockLayout.visibility = View.GONE
+            if (!popupDismissed) fullScreen!!.lockLayout.visibility = View.GONE
+            else lockLayout.visibility = View.GONE
+
             bottomBar.visibility = View.VISIBLE
             scrollView.visibility = View.VISIBLE
-
             isPaused = false
             return
         }
 
-        progressBar.animate().alpha(0f).setDuration(125).withEndAction{
-            progressBar.visibility = View.GONE
-        }.start()
+        progressBar.animate().alpha(0f).setDuration(125).withEndAction{ progressBar.visibility = View.GONE }.start()
         isPaused = true
         val intent = Intent(this@MainActivity, LoginActivity::class.java)
         intent.putExtra("previous", "MainActivity")
@@ -587,22 +528,16 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (!popupDismissed)
-            fullScreen!!.dismiss()
-
+        if (!popupDismissed) fullScreen!!.dismiss()
         unregisterReceiver(broadcastReceiver)
     }
 
     override fun onPause() {
         if (!goSettings) {
             bottomBar.visibility = View.GONE
-            if (!popupDismissed) {
-                fullScreen!!.lockLayout.visibility = View.VISIBLE
-                if (fullScreen!!.videoView.visibility == View.VISIBLE)
-                    fullScreen!!.videoView.exo_pause.performClick()
-            }
-            else
-                lockLayout.visibility = View.VISIBLE
+            if (!popupDismissed) { fullScreen!!.lockLayout.visibility = View.VISIBLE
+                if (fullScreen!!.videoView.visibility == View.VISIBLE) fullScreen!!.videoView.exo_pause.performClick() }
+            else lockLayout.visibility = View.VISIBLE
         }
 
         goSettings = false
@@ -610,10 +545,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (actualFolder == mapping)
-            finish()
-        else
-            goBack()
+        if (actualFolder == mapping) finish()
+        else goBack()
     }
 
     //endregion override methods
