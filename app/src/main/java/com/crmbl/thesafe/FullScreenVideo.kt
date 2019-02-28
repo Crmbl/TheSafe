@@ -3,6 +3,9 @@ package com.crmbl.thesafe
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Context.LAYOUT_INFLATER_SERVICE
+import android.graphics.PointF
+import android.graphics.Rect
+import android.graphics.RectF
 import android.view.*
 import android.widget.*
 import com.crmbl.thesafe.utils.UriByteDataHelper
@@ -14,6 +17,7 @@ import com.google.android.exoplayer2.upstream.DataSpec
 import com.google.android.exoplayer2.video.VideoListener
 import kotlinx.android.synthetic.main.exo_controller_fullscreen.view.*
 import java.io.IOException
+import com.google.android.exoplayer2.ui.PlayerView
 
 
 @SuppressLint("ClickableViewAccessibility", "InflateParams")
@@ -23,9 +27,19 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
 
     internal var view: View = contentView
     internal var loading: ProgressBar
-    internal var videoView: ZoomableExoPlayerView
+    internal var videoView: PlayerView
     private var lockLayout: FrameLayout
     private var player: SimpleExoPlayer? = null
+    //////////////////////////TODO TESTING///////////////////////
+    private var scaleFactor: Float = 1f
+    private val mContentRect: Rect? = null
+    private var mScaleGestureDetector : ScaleGestureDetector
+    private val AXIS_X_MIN = -1f
+    private val AXIS_X_MAX = 1f
+    private val AXIS_Y_MIN = -1f
+    private val AXIS_Y_MAX = 1f
+    private val mCurrentViewport = RectF(AXIS_X_MIN, AXIS_Y_MIN, AXIS_X_MAX, AXIS_Y_MAX)
+    //////////////////////////TODO TESTING///////////////////////
 
     init {
         isOutsideTouchable = true
@@ -57,7 +71,7 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
             }
         })
 
-        videoView.exo_quit_fullscreen.setOnClickListener { this.dismiss() }
+        /*videoView.exo_quit_fullscreen.setOnClickListener { this.dismiss() }
         videoView.exo_mute.setOnClickListener {
             player?.volume = 1f
             videoView.exo_mute.visibility = View.GONE
@@ -67,8 +81,90 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
             player?.volume = 0f
             videoView.exo_mute.visibility = View.VISIBLE
             videoView.exo_volume.visibility = View.GONE
+        }*/
+
+        //////////////////////////TODO TESTING///////////////////////
+        mScaleGestureDetector = ScaleGestureDetector(mContext, object : ScaleGestureDetector.OnScaleGestureListener {
+            override fun onScaleEnd(detector: ScaleGestureDetector) {}
+            override fun onScaleBegin(detector: ScaleGestureDetector): Boolean { return true }
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                scaleFactor *= detector.scaleFactor
+                scaleFactor = Math.max(0.1f, Math.min(scaleFactor, 5.0f))
+                videoView.invalidate()
+                return false
+            }
+        })
+        /*val mGestureDetector = GestureDetector(mContext, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onScroll(e1: MotionEvent, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
+                mContentRect?.apply {
+                    val viewportOffsetX = distanceX * mCurrentViewport.width() / width()
+                    val viewportOffsetY = -distanceY * mCurrentViewport.height() / height()
+
+                    val curWidth: Float = mCurrentViewport.width()
+                    val curHeight: Float = mCurrentViewport.height()
+                    val newX: Float = Math.max(AXIS_X_MIN, Math.min(mCurrentViewport.left + viewportOffsetX, AXIS_X_MAX - curWidth))
+                    val newY: Float = Math.max(AXIS_Y_MIN + curHeight, Math.min(mCurrentViewport.bottom + viewportOffsetY, AXIS_Y_MAX))
+                    mCurrentViewport.set(newX, newY - curHeight, newX + curWidth, newY)
+
+                    videoView.postInvalidateOnAnimation()
+                }
+                return true
+            }
+        })
+        mScaleGestureDetector = ScaleGestureDetector(mContext, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            private val viewportFocus = PointF()
+            private var lastSpanX: Float = 0f
+            private var lastSpanY: Float = 0f
+
+            override fun onScaleBegin(scaleGestureDetector: ScaleGestureDetector): Boolean {
+                lastSpanX = scaleGestureDetector.currentSpanX
+                lastSpanY = scaleGestureDetector.currentSpanY
+                return true
+            }
+
+            override fun onScale(scaleGestureDetector: ScaleGestureDetector): Boolean {
+                val spanX: Float = scaleGestureDetector.currentSpanX
+                val spanY: Float = scaleGestureDetector.currentSpanY
+
+                val newWidth: Float = lastSpanX / spanX * mCurrentViewport.width()
+                val newHeight: Float = lastSpanY / spanY * mCurrentViewport.height()
+
+                val focusX: Float = scaleGestureDetector.focusX
+                val focusY: Float = scaleGestureDetector.focusY
+                hitTest(focusX, focusY, viewportFocus)
+
+                mContentRect?.apply {
+                    mCurrentViewport.set(
+                        viewportFocus.x - newWidth * (focusX - left) / mCurrentViewport.width(),
+                        viewportFocus.y - newHeight * (bottom - focusY) / mCurrentViewport.height(),
+                        0f,
+                        0f
+                    )
+                }
+                mCurrentViewport.right = mCurrentViewport.left + newWidth
+                mCurrentViewport.bottom = mCurrentViewport.top + newHeight
+                videoView.postInvalidateOnAnimation()
+
+                lastSpanX = spanX
+                lastSpanY = spanY
+                return true
+            }
+        })*/
+        videoView.setOnTouchListener(object: View.OnTouchListener {
+            override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+                return mScaleGestureDetector.onTouchEvent(event)
+                        //|| mGestureDetector.onTouchEvent(event)
+            }
+        })
+        videoView.viewTreeObserver.addOnDrawListener {
+            videoView.scaleX = scaleFactor
+            videoView.scaleY = scaleFactor
         }
+        //////////////////////////TODO TESTING///////////////////////
+
         //endregion
+
+        //region init video
 
         val byteArrayDataSource = ByteArrayDataSource(imageBytes)
         val mediaByteUri = UriByteDataHelper().getUri(imageBytes)
@@ -82,7 +178,22 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
         player?.prepare(mediaSource)
 
         showAtLocation(v, Gravity.CENTER, 0, 0)
+
+        //endregion init video
     }
+
+    //////////////////////////TODO TESTING///////////////////////
+    private fun hitTest(x: Float, y: Float, dest: PointF): Boolean {
+        if (mContentRect == null) return false
+        if (!mContentRect.contains(x.toInt(), y.toInt())) return false
+
+        dest.set(
+            mCurrentViewport.left + mCurrentViewport.width() * (x - mContentRect.left) / mContentRect.width(),
+            mCurrentViewport.top + mCurrentViewport.height() * (y - mContentRect.bottom) / -mContentRect.height()
+        )
+        return true
+    }
+    //////////////////////////TODO TESTING///////////////////////
 
     override fun dismiss() {
         player?.release()

@@ -34,6 +34,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
 
+//TODO improve min height, not really nice
 class MainActivity : AppCompatActivity() {
 
     private val loadLimit : Int = 5

@@ -39,7 +39,6 @@
             app:controller_layout_id="@layout/exo_controller"
             android:background="@drawable/bg_listitem_rounded" />
 
-    <!--android:layout_below="@id/videoView"-->
     <LinearLayout android:id="@+id/bottom_layout"
                   android:layout_width="match_parent"
                   android:orientation="horizontal"

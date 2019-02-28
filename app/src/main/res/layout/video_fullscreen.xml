@@ -22,14 +22,14 @@
                 android:layout_gravity="center"/>
     </FrameLayout>
 
-    <com.crmbl.thesafe.ZoomableExoPlayerView
+    <!--app:controller_layout_id="@layout/exo_controller_fullscreen"-->
+    <com.google.android.exoplayer2.ui.PlayerView
             android:id="@+id/video"
             android:layout_centerInParent="true"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:surface_type="texture_view"
             app:resize_mode="fit"
-            app:controller_layout_id="@layout/exo_controller_fullscreen"/>
+            app:use_controller="false"/>
 
     <ImageButton
             android:id="@+id/ib_close"
