@@ -3,10 +3,10 @@ package com.crmbl.thesafe
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Context.LAYOUT_INFLATER_SERVICE
-import android.graphics.PointF
 import android.graphics.Rect
 import android.graphics.RectF
 import android.view.*
+import android.view.MotionEvent.INVALID_POINTER_ID
 import android.widget.*
 import com.crmbl.thesafe.utils.UriByteDataHelper
 import com.google.android.exoplayer2.*
@@ -32,13 +32,16 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
     private var player: SimpleExoPlayer? = null
     //////////////////////////TODO TESTING///////////////////////
     private var scaleFactor: Float = 1f
-    private val mContentRect: Rect? = null
+    private val mContentRect: Rect = Rect()
     private var mScaleGestureDetector : ScaleGestureDetector
     private val AXIS_X_MIN = -1f
     private val AXIS_X_MAX = 1f
     private val AXIS_Y_MIN = -1f
     private val AXIS_Y_MAX = 1f
     private val mCurrentViewport = RectF(AXIS_X_MIN, AXIS_Y_MIN, AXIS_X_MAX, AXIS_Y_MAX)
+    private var mLastTouchX : Float = 0f
+    private var mLastTouchY : Float = 0f
+    private var mActivePointerId : Int = 0
     //////////////////////////TODO TESTING///////////////////////
 
     init {
@@ -63,7 +66,10 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
         closeButton.setOnClickListener { dismiss() }
 
         player?.addVideoListener(object: VideoListener {
-            override fun onVideoSizeChanged(width: Int, height: Int, unappliedRotationDegrees: Int, pixelWidthHeightRatio: Float) {}
+            override fun onVideoSizeChanged(width: Int, height: Int, unappliedRotationDegrees: Int, pixelWidthHeightRatio: Float) {
+                mContentRect.set(videoView.paddingLeft, videoView.paddingTop,
+                    videoView.width - videoView.paddingRight, videoView.height - videoView.paddingBottom)
+            }
             override fun onRenderedFirstFrame() {
                 loading.setBackgroundColor(mContext.getColor(R.color.colorItemBackground))
                 loading.visibility = View.GONE
@@ -94,9 +100,9 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
                 return false
             }
         })
-        /*val mGestureDetector = GestureDetector(mContext, object : GestureDetector.SimpleOnGestureListener() {
+        val mGestureDetector = GestureDetector(mContext, object : GestureDetector.SimpleOnGestureListener() {
             override fun onScroll(e1: MotionEvent, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-                mContentRect?.apply {
+                mContentRect.apply {
                     val viewportOffsetX = distanceX * mCurrentViewport.width() / width()
                     val viewportOffsetY = -distanceY * mCurrentViewport.height() / height()
 
@@ -110,8 +116,11 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
                 }
                 return true
             }
+            override fun onDown(e: MotionEvent?): Boolean {
+                return true
+            }
         })
-        mScaleGestureDetector = ScaleGestureDetector(mContext, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        /*mScaleGestureDetector = ScaleGestureDetector(mContext, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
             private val viewportFocus = PointF()
             private var lastSpanX: Float = 0f
             private var lastSpanY: Float = 0f
@@ -131,7 +140,12 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
 
                 val focusX: Float = scaleGestureDetector.focusX
                 val focusY: Float = scaleGestureDetector.focusY
-                hitTest(focusX, focusY, viewportFocus)
+                if (mContentRect.contains(focusX.toInt(), focusY.toInt())) {
+                    viewportFocus.set(
+                        mCurrentViewport.left + mCurrentViewport.width() * (x - mContentRect.left) / mContentRect.width(),
+                        mCurrentViewport.top + mCurrentViewport.height() * (y - mContentRect.bottom) / -mContentRect.height()
+                    )
+                }
 
                 mContentRect?.apply {
                     mCurrentViewport.set(
@@ -152,10 +166,12 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
         })*/
         videoView.setOnTouchListener(object: View.OnTouchListener {
             override fun onTouch(v: View?, event: MotionEvent?): Boolean {
-                return mScaleGestureDetector.onTouchEvent(event)
-                        //|| mGestureDetector.onTouchEvent(event)
+                //return mScaleGestureDetector.onTouchEvent(event)
+                //return mGestureDetector.onTouchEvent(event)
+                return onTouchEvent(event)
             }
         })
+
         videoView.viewTreeObserver.addOnDrawListener {
             videoView.scaleX = scaleFactor
             videoView.scaleY = scaleFactor
@@ -183,14 +199,37 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
     }
 
     //////////////////////////TODO TESTING///////////////////////
-    private fun hitTest(x: Float, y: Float, dest: PointF): Boolean {
-        if (mContentRect == null) return false
-        if (!mContentRect.contains(x.toInt(), y.toInt())) return false
-
-        dest.set(
-            mCurrentViewport.left + mCurrentViewport.width() * (x - mContentRect.left) / mContentRect.width(),
-            mCurrentViewport.top + mCurrentViewport.height() * (y - mContentRect.bottom) / -mContentRect.height()
-        )
+    private fun onTouchEvent(event: MotionEvent?): Boolean {
+        when (event?.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                event.actionIndex.also { pointerIndex ->
+                    mLastTouchX = event.getX(pointerIndex)
+                    mLastTouchY = event.getY(pointerIndex)
+                }
+                mActivePointerId = event.getPointerId(0)
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val (x: Float, y: Float) = event.findPointerIndex(mActivePointerId).let { pointerIndex ->
+                    event.getX(pointerIndex) to event.getY(pointerIndex)
+                }
+                videoView.x += x - mLastTouchX
+                videoView.y += y - mLastTouchY
+                videoView.invalidate()
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> mActivePointerId = INVALID_POINTER_ID
+            MotionEvent.ACTION_POINTER_UP -> {
+                event.actionIndex.also { pointerIndex -> event.getPointerId(pointerIndex)
+                    .takeIf {
+                        it == mActivePointerId
+                    }?.run {
+                        val newPointerIndex = if (pointerIndex == 0) 1 else 0
+                        mLastTouchX = event.getX(newPointerIndex)
+                        mLastTouchY = event.getY(newPointerIndex)
+                        mActivePointerId = event.getPointerId(newPointerIndex)
+                    }
+                }
+            }
+        }
         return true
     }
     //////////////////////////TODO TESTING///////////////////////
