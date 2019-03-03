@@ -1,6 +1,7 @@
 package com.crmbl.thesafe.viewHolders
 
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
@@ -62,6 +63,7 @@ class VideoViewHolder(itemView: View, private val activity: MainActivity?): Recy
         player?.addVideoListener(ComposableVideoListener().onVideoSizeChanged { _, _, _, _ ->
             params = bottomLayout.layoutParams as RelativeLayout.LayoutParams
             params.addRule(RelativeLayout.BELOW, R.id.videoView)
+            itemView.findViewById<FrameLayout>(R.id.waiting_frame).visibility = View.GONE
             bottomLayout.layoutParams = params
         })
     }

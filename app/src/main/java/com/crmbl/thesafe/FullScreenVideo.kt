@@ -1,10 +1,9 @@
 package com.crmbl.thesafe
 
+import android.animation.AnimatorSet
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Context.LAYOUT_INFLATER_SERVICE
-import android.graphics.Rect
-import android.graphics.RectF
 import android.view.*
 import android.view.MotionEvent.INVALID_POINTER_ID
 import android.widget.*
@@ -14,45 +13,74 @@ import com.google.android.exoplayer2.source.ExtractorMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.upstream.ByteArrayDataSource
 import com.google.android.exoplayer2.upstream.DataSpec
-import com.google.android.exoplayer2.video.VideoListener
-import kotlinx.android.synthetic.main.exo_controller_fullscreen.view.*
 import java.io.IOException
 import com.google.android.exoplayer2.ui.PlayerView
+import android.os.Handler
+import com.crmbl.thesafe.listeners.*
+import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.ui.DefaultTimeBar
+import android.animation.ObjectAnimator
 
 
 @SuppressLint("ClickableViewAccessibility", "InflateParams")
-class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteArray) :
+class FullScreenVideo(mContext: Context, v: View, imageBytes: ByteArray) :
     PopupWindow((mContext.getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater).inflate(
         R.layout.video_fullscreen, null), ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT) {
 
     internal var view: View = contentView
-    internal var loading: ProgressBar
-    internal var videoView: PlayerView
+    private var frame: RelativeLayout
     private var lockLayout: FrameLayout
+    private var progressBar: DefaultTimeBar
+    private var controllerLayout: RelativeLayout
+    private var closeButton: ImageButton
+    private var pauseButton: ImageButton
+    private var playButton: ImageButton
+    private var minimizeButton: ImageButton
+    private var muteButton: ImageButton
+    private var rotateButton: ImageButton
+    private var volumeButton: ImageButton
+    private var loading: ProgressBar
+    private var frameGestureDetector: GestureDetector
+    private var gestureDetector: GestureDetector
+    private var scaleGestureDetector: ScaleGestureDetector
     private var player: SimpleExoPlayer? = null
-    //////////////////////////TODO TESTING///////////////////////
+    private var timeoutHandler: Handler? = null
+    private var interactionTimeoutRunnable: Runnable? = null
+    private var updateHandler: Handler? = null
+    private var updateProgressAction: Runnable? = null
+    private var limitFactor: Float = 1f
+    private var isRotating: Boolean = false
     private var scaleFactor: Float = 1f
-    private val mContentRect: Rect = Rect()
-    private var mScaleGestureDetector : ScaleGestureDetector
-    private val AXIS_X_MIN = -1f
-    private val AXIS_X_MAX = 1f
-    private val AXIS_Y_MIN = -1f
-    private val AXIS_Y_MAX = 1f
-    private val mCurrentViewport = RectF(AXIS_X_MIN, AXIS_Y_MIN, AXIS_X_MAX, AXIS_Y_MAX)
-    private var mLastTouchX : Float = 0f
-    private var mLastTouchY : Float = 0f
-    private var mActivePointerId : Int = 0
-    //////////////////////////TODO TESTING///////////////////////
+    private var mLastTouchX: Float = 0f
+    private var mLastTouchY: Float = 0f
+    private var mActivePointerId: Int = 0
+    private var videoView: PlayerView
+    private var videoX: Float? = null
+    private var videoY: Float? = null
+    private var isLandscape: Boolean = false
+    var isScaling: Boolean = false
 
     init {
+
+        //region init variables
+
         isOutsideTouchable = true
         isFocusable = true
         elevation = 5.0f
 
-        val closeButton = this.view.findViewById(R.id.ib_close) as ImageButton
-        lockLayout = view.findViewById(R.id.layout_lock)
-        videoView = view.findViewById(R.id.video)
-        loading = view.findViewById(R.id.loading)
+        frame = view.findViewById(R.id.rl_custom_layout)
+        closeButton = this.view.findViewById(R.id.controller_close)
+        rotateButton = this.view.findViewById(R.id.controller_rotate)
+        pauseButton = this.view.findViewById(R.id.controller_pause)
+        playButton = this.view.findViewById(R.id.controller_play)
+        minimizeButton = this.view.findViewById(R.id.controller_minimize)
+        muteButton = this.view.findViewById(R.id.controller_mute)
+        volumeButton = this.view.findViewById(R.id.controller_volume)
+        lockLayout = this.view.findViewById(R.id.layout_lock)
+        controllerLayout = this.view.findViewById(R.id.controller_layout)
+        progressBar = this.view.findViewById(R.id.controller_progress)
+        videoView = this.view.findViewById(R.id.video)
+        loading = this.view.findViewById(R.id.loading)
         loading.isIndeterminate = true
         loading.visibility = View.VISIBLE
 
@@ -60,125 +88,37 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
         player?.volume = 1f
         player?.playWhenReady = true
         videoView.player = player
+        videoView.hideController()
 
-        //region listeners
+        timeoutHandler = Handler()
+        interactionTimeoutRunnable = Runnable { if (player?.playWhenReady!!) controllerLayout.visibility = View.INVISIBLE }
+        resetHandler(true)
+        updateHandler = Handler()
+        updateProgressAction = Runnable { updateProgressBar() }
 
+        //endregion init variables
+
+        //region init listeners
+
+        frameGestureDetector = GestureDetector(mContext, ComposableGestureListener().onDoubleTap { toggleController() })
+        gestureDetector = GestureDetector(mContext, ComposableGestureListener().onDoubleTap { toggleController() })
+        scaleGestureDetector = ScaleGestureDetector(mContext, ComposableScaleGestureListener().onScale { detector -> scaleVideo(detector) })
+
+        player?.addListener(ComposablePlayerEventListener().onPlayerStateChanged { _, _ -> updateProgressBar() })
+        player?.addVideoListener(ComposableVideoListener().onRenderedFirstFrame { onFirstFrame() })
+        frame.setOnTouchListener(ComposableTouchListener { _, event -> onTouchFrame(event!!) })
         closeButton.setOnClickListener { dismiss() }
+        minimizeButton.setOnClickListener { dismiss() }
+        muteButton.setOnClickListener { muteVideo() }
+        volumeButton.setOnClickListener { unMuteVideo() }
+        pauseButton.setOnClickListener { pauseVideo() }
+        playButton.setOnClickListener { playVideo() }
+        rotateButton.setOnClickListener { rotateVideo() }
+        progressBar.addListener(ComposableTimeBarScrubListener(onStop = { _, position, _ -> seekVideo(position) }))
+        videoView.viewTreeObserver.addOnDrawListener { onDraw() }
+        videoView.setOnTouchListener(ComposableTouchListener { _, event -> onTouchVideo(event!!) })
 
-        player?.addVideoListener(object: VideoListener {
-            override fun onVideoSizeChanged(width: Int, height: Int, unappliedRotationDegrees: Int, pixelWidthHeightRatio: Float) {
-                mContentRect.set(videoView.paddingLeft, videoView.paddingTop,
-                    videoView.width - videoView.paddingRight, videoView.height - videoView.paddingBottom)
-            }
-            override fun onRenderedFirstFrame() {
-                loading.setBackgroundColor(mContext.getColor(R.color.colorItemBackground))
-                loading.visibility = View.GONE
-                videoView.showController()
-            }
-        })
-
-        /*videoView.exo_quit_fullscreen.setOnClickListener { this.dismiss() }
-        videoView.exo_mute.setOnClickListener {
-            player?.volume = 1f
-            videoView.exo_mute.visibility = View.GONE
-            videoView.exo_volume.visibility = View.VISIBLE
-        }
-        videoView.exo_volume.setOnClickListener {
-            player?.volume = 0f
-            videoView.exo_mute.visibility = View.VISIBLE
-            videoView.exo_volume.visibility = View.GONE
-        }*/
-
-        //////////////////////////TODO TESTING///////////////////////
-        mScaleGestureDetector = ScaleGestureDetector(mContext, object : ScaleGestureDetector.OnScaleGestureListener {
-            override fun onScaleEnd(detector: ScaleGestureDetector) {}
-            override fun onScaleBegin(detector: ScaleGestureDetector): Boolean { return true }
-            override fun onScale(detector: ScaleGestureDetector): Boolean {
-                scaleFactor *= detector.scaleFactor
-                scaleFactor = Math.max(0.1f, Math.min(scaleFactor, 5.0f))
-                videoView.invalidate()
-                return false
-            }
-        })
-        val mGestureDetector = GestureDetector(mContext, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onScroll(e1: MotionEvent, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-                mContentRect.apply {
-                    val viewportOffsetX = distanceX * mCurrentViewport.width() / width()
-                    val viewportOffsetY = -distanceY * mCurrentViewport.height() / height()
-
-                    val curWidth: Float = mCurrentViewport.width()
-                    val curHeight: Float = mCurrentViewport.height()
-                    val newX: Float = Math.max(AXIS_X_MIN, Math.min(mCurrentViewport.left + viewportOffsetX, AXIS_X_MAX - curWidth))
-                    val newY: Float = Math.max(AXIS_Y_MIN + curHeight, Math.min(mCurrentViewport.bottom + viewportOffsetY, AXIS_Y_MAX))
-                    mCurrentViewport.set(newX, newY - curHeight, newX + curWidth, newY)
-
-                    videoView.postInvalidateOnAnimation()
-                }
-                return true
-            }
-            override fun onDown(e: MotionEvent?): Boolean {
-                return true
-            }
-        })
-        /*mScaleGestureDetector = ScaleGestureDetector(mContext, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            private val viewportFocus = PointF()
-            private var lastSpanX: Float = 0f
-            private var lastSpanY: Float = 0f
-
-            override fun onScaleBegin(scaleGestureDetector: ScaleGestureDetector): Boolean {
-                lastSpanX = scaleGestureDetector.currentSpanX
-                lastSpanY = scaleGestureDetector.currentSpanY
-                return true
-            }
-
-            override fun onScale(scaleGestureDetector: ScaleGestureDetector): Boolean {
-                val spanX: Float = scaleGestureDetector.currentSpanX
-                val spanY: Float = scaleGestureDetector.currentSpanY
-
-                val newWidth: Float = lastSpanX / spanX * mCurrentViewport.width()
-                val newHeight: Float = lastSpanY / spanY * mCurrentViewport.height()
-
-                val focusX: Float = scaleGestureDetector.focusX
-                val focusY: Float = scaleGestureDetector.focusY
-                if (mContentRect.contains(focusX.toInt(), focusY.toInt())) {
-                    viewportFocus.set(
-                        mCurrentViewport.left + mCurrentViewport.width() * (x - mContentRect.left) / mContentRect.width(),
-                        mCurrentViewport.top + mCurrentViewport.height() * (y - mContentRect.bottom) / -mContentRect.height()
-                    )
-                }
-
-                mContentRect?.apply {
-                    mCurrentViewport.set(
-                        viewportFocus.x - newWidth * (focusX - left) / mCurrentViewport.width(),
-                        viewportFocus.y - newHeight * (bottom - focusY) / mCurrentViewport.height(),
-                        0f,
-                        0f
-                    )
-                }
-                mCurrentViewport.right = mCurrentViewport.left + newWidth
-                mCurrentViewport.bottom = mCurrentViewport.top + newHeight
-                videoView.postInvalidateOnAnimation()
-
-                lastSpanX = spanX
-                lastSpanY = spanY
-                return true
-            }
-        })*/
-        videoView.setOnTouchListener(object: View.OnTouchListener {
-            override fun onTouch(v: View?, event: MotionEvent?): Boolean {
-                //return mScaleGestureDetector.onTouchEvent(event)
-                //return mGestureDetector.onTouchEvent(event)
-                return onTouchEvent(event)
-            }
-        })
-
-        videoView.viewTreeObserver.addOnDrawListener {
-            videoView.scaleX = scaleFactor
-            videoView.scaleY = scaleFactor
-        }
-        //////////////////////////TODO TESTING///////////////////////
-
-        //endregion
+        //endregion init listeners
 
         //region init video
 
@@ -198,7 +138,156 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
         //endregion init video
     }
 
-    //////////////////////////TODO TESTING///////////////////////
+    //region private methods
+
+    private fun showController() {
+        controllerLayout.clearAnimation()
+        controllerLayout.visibility = View.VISIBLE
+    }
+
+    private fun hideController() {
+        if (controllerLayout.visibility == View.VISIBLE)
+            controllerLayout.visibility = View.INVISIBLE
+    }
+
+    private fun pauseVideo() {
+        pauseButton.visibility = View.GONE
+        playButton.visibility = View.VISIBLE
+        player?.playWhenReady = false
+        updateHandler?.removeCallbacks(updateProgressAction)
+    }
+
+    private fun playVideo() {
+        playButton.visibility = View.GONE
+        pauseButton.visibility = View.VISIBLE
+        player?.playWhenReady = true
+        hideController()
+    }
+
+    private fun resetHandler(start: Boolean = false) {
+        if (!start)
+            timeoutHandler!!.removeCallbacks(interactionTimeoutRunnable)
+        timeoutHandler!!.postDelayed(interactionTimeoutRunnable, 5000)
+    }
+
+    private fun muteVideo() {
+        resetHandler()
+        player?.volume = 1f
+        muteButton.visibility = View.GONE
+        volumeButton.visibility = View.VISIBLE
+    }
+
+    private fun unMuteVideo() {
+        resetHandler()
+        player?.volume = 0f
+        muteButton.visibility = View.VISIBLE
+        volumeButton.visibility = View.GONE
+    }
+
+    private fun updateProgressBar() {
+        val duration = (if (player == null) 0 else player!!.duration).toLong()
+        val position = (if (player == null) 0 else player?.currentPosition)!!.toLong()
+        val bufferedPosition = (if (player == null) 0 else player?.bufferedPosition)!!.toLong()
+
+        progressBar.setPosition(position)
+        progressBar.setBufferedPosition(bufferedPosition)
+        progressBar.setDuration(duration)
+
+        updateHandler?.removeCallbacks(updateProgressAction)
+        val playbackState = if (player == null) Player.STATE_IDLE else player?.playbackState
+        if (playbackState != Player.STATE_IDLE && playbackState != Player.STATE_ENDED) {
+            var delayMs: Long
+            if (player?.playWhenReady!! && playbackState == Player.STATE_READY) {
+                delayMs = 800 - position % 800
+                if (delayMs < 200) delayMs += 800
+            } else delayMs = 800
+            updateHandler?.postDelayed(updateProgressAction, delayMs)
+        }
+    }
+
+    private fun rotateVideo() {
+        resetHandler()
+        isRotating = true
+        videoView.x = videoX!!
+        videoView.y = videoY!!
+
+        val rotateDegree: Float = if (isLandscape) 0f else 90f
+        val scaleFactor: Float = if (isLandscape) 1f
+            else {
+                if (videoView.width >= videoView.height) frame.width.toFloat() / videoView.height.toFloat()
+                else frame.height.toFloat() / videoView.width.toFloat()
+            }
+
+        val animatorSet = AnimatorSet()
+        animatorSet.duration = 500
+        animatorSet.playTogether(
+            ObjectAnimator.ofFloat(videoView, "rotation", rotateDegree),
+            ObjectAnimator.ofFloat(pauseButton, "rotation", rotateDegree),
+            ObjectAnimator.ofFloat(playButton, "rotation", rotateDegree),
+            ObjectAnimator.ofFloat(muteButton, "rotation", rotateDegree),
+            ObjectAnimator.ofFloat(volumeButton, "rotation", rotateDegree),
+            ObjectAnimator.ofFloat(rotateButton, "rotation", rotateDegree),
+            ObjectAnimator.ofFloat(videoView, "scaleX", scaleFactor),
+            ObjectAnimator.ofFloat(videoView, "scaleY", scaleFactor)
+        )
+        animatorSet.addListener(ComposableAnimatorListener {
+            this.scaleFactor = scaleFactor
+            limitFactor = scaleFactor
+            isRotating = false
+            isLandscape = !isLandscape
+        })
+        animatorSet.start()
+    }
+
+    private fun seekVideo(position: Long) {
+        resetHandler()
+        player?.seekTo(position)
+    }
+
+    private fun toggleController(): Boolean {
+        if (controllerLayout.visibility == View.VISIBLE)
+            hideController()
+        else
+            showController()
+
+        return true
+    }
+
+    private fun onDraw() {
+        if (isRotating) return
+        isScaling = scaleFactor != 1f
+        videoView.scaleX = scaleFactor
+        videoView.scaleY = scaleFactor
+    }
+
+    private fun onTouchFrame(event: MotionEvent): Boolean {
+        resetHandler()
+        gestureDetector.onTouchEvent(event)
+        frame.requestDisallowInterceptTouchEvent(true)
+        return true
+    }
+
+    private fun scaleVideo(detector: ScaleGestureDetector): Boolean {
+            scaleFactor *= detector.scaleFactor
+            val tmp = Math.max(0.1f, Math.min(scaleFactor, 5.0f))
+            scaleFactor = if (tmp < limitFactor) limitFactor else tmp
+            videoView.invalidate()
+
+        return false
+    }
+
+    private fun onFirstFrame() {
+        loading.visibility = View.GONE
+    }
+
+    private fun onTouchVideo(event: MotionEvent): Boolean {
+        resetHandler()
+        scaleGestureDetector.onTouchEvent(event)
+        gestureDetector.onTouchEvent(event)
+        onTouchEvent(event)
+        return true
+    }
+
     private fun onTouchEvent(event: MotionEvent?): Boolean {
         when (event?.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -212,9 +301,10 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
                 val (x: Float, y: Float) = event.findPointerIndex(mActivePointerId).let { pointerIndex ->
                     event.getX(pointerIndex) to event.getY(pointerIndex)
                 }
-                videoView.x += x - mLastTouchX
-                videoView.y += y - mLastTouchY
-                videoView.invalidate()
+                if (isLandscape)
+                    checkClipping(-y + mLastTouchY, x - mLastTouchX)
+                else
+                    checkClipping(x - mLastTouchX, y - mLastTouchY)
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> mActivePointerId = INVALID_POINTER_ID
             MotionEvent.ACTION_POINTER_UP -> {
@@ -232,20 +322,80 @@ class FullScreenVideo(internal var mContext: Context, v: View, imageBytes: ByteA
         }
         return true
     }
-    //////////////////////////TODO TESTING///////////////////////
 
-    override fun dismiss() {
-        player?.release()
-        super.dismiss()
+    private fun checkClipping(x: Float, y: Float) {
+        if (videoX == null || videoY == null) {
+            videoX = videoView.x
+            videoY = videoView.y
+        }
+
+        val videoWidth: Float
+        val videoHeight: Float
+        if (!isLandscape) {
+            videoWidth = videoView.width * scaleFactor
+            videoHeight = videoView.height * scaleFactor
+        } else {
+            videoWidth = videoView.height * scaleFactor
+            videoHeight = videoView.width * scaleFactor
+        }
+
+        val tmpX = (videoWidth - frame.width) / 2
+        val tmpY = (videoHeight - frame.height) / 2
+        val nextX = videoView.x + x
+        val nextY = videoView.y + y
+
+        if (videoWidth > frame.width) {
+            if (nextX <= tmpX +videoX!! && nextX >= -tmpX +videoX!!)
+                videoView.x = nextX
+            else if (nextX <= tmpX +videoX!!)
+                videoView.x = -tmpX +videoX!!
+            else
+                videoView.x = tmpX +videoX!!
+        }
+        else if (videoX != null)
+            videoView.x = videoX!!
+
+        if (videoHeight > frame.height) {
+            if (nextY <= tmpY +videoY!! && nextY >= -tmpY +videoY!!)
+                videoView.y = nextY
+            else if (nextY <= tmpY +videoY!!)
+                videoView.y = -tmpY +videoY!!
+            else
+                videoView.y = tmpY +videoY!!
+        }
+        else if (videoY != null)
+            videoView.y = videoY!!
+
+        videoView.invalidate()
     }
 
+    //endregion private methods
+
+    //region public methods
+
     fun onPause() {
-        videoView.exo_pause.performClick()
+        pauseVideo()
+        updateHandler?.removeCallbacks(updateProgressAction)
+        timeoutHandler?.removeCallbacks(interactionTimeoutRunnable)
         lockLayout.visibility = View.VISIBLE
     }
 
     fun onResume() {
-        videoView.exo_play.performClick()
         lockLayout.visibility = View.GONE
+        showController()
     }
+
+    //endregion public methods
+
+    //region override
+
+    override fun dismiss() {
+        player?.release()
+        updateHandler?.removeCallbacks(updateProgressAction)
+        timeoutHandler?.removeCallbacks(interactionTimeoutRunnable)
+
+        super.dismiss()
+    }
+
+    //endregion override
 }

@@ -528,6 +528,7 @@ class MainActivity : AppCompatActivity() {
         bottomBar.visibility = View.INVISIBLE
         scrollView.visibility = View.INVISIBLE
 
+        fullScreen = null
         when {
             file.type == "imageView" -> fullScreen = FullScreenImage(applicationContext, view, file.decrypted!!, file.originName.split('.').last())
             file.type == "videoView" -> fullScreen = FullScreenVideo(applicationContext, view, file.decrypted!!)
@@ -556,7 +557,8 @@ class MainActivity : AppCompatActivity() {
                     event?.action == MotionEvent.ACTION_DOWN -> initialY = event.y
                     event?.action == MotionEvent.ACTION_UP -> {
                         if (Math.abs(initialY - event.y) in 1600.0..2100.0)
-                            fullScreen?.dismiss()
+                            if (fullScreen is FullScreenImage || fullScreen is FullScreenVideo && !(fullScreen as FullScreenVideo).isScaling)
+                                fullScreen?.dismiss()
                     }
                 }
                 return false
