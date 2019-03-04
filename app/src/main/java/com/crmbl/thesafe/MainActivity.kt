@@ -27,6 +27,8 @@ import com.crmbl.thesafe.listeners.ComposableAnimationListener
 import com.crmbl.thesafe.listeners.ComposableTransitionListener
 import com.crmbl.thesafe.utils.CryptoUtil
 import com.crmbl.thesafe.utils.RecyclerItemClickListener
+import com.crmbl.thesafe.viewHolders.ImageViewHolder
+import com.crmbl.thesafe.viewHolders.VideoViewHolder
 import com.github.ybq.android.spinkit.style.CubeGrid
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
@@ -466,7 +468,9 @@ class MainActivity : AppCompatActivity() {
             emptyLayout.visibility = View.INVISIBLE; emptyLayout.alpha = 1f }.start()
 
         recyclerView.animate().alpha(0f).setDuration(125).withEndAction{
-            recyclerView.visibility = View.INVISIBLE; recyclerView.alpha = 1f }.start()
+            recyclerView.visibility = View.INVISIBLE
+            recyclerView.alpha = 1f
+        }.start()
 
         progressBar.alpha = 0f
         progressBar.visibility = View.VISIBLE
@@ -474,13 +478,25 @@ class MainActivity : AppCompatActivity() {
 
         chipGroup.removeAllViews()
         if (direction != null) {
-            actualFolder = if (direction)
-                                findFolder(clickedChip?.text)!!
-                            else
-                                actualFolder?.parent?.copy()
+            actualFolder = if (direction) findFolder(clickedChip?.text)!!
+                            else actualFolder?.parent?.copy()
         }
 
         loadedFiles = 0
+        recycleViews()
+    }
+
+    //TODO crash if user click too fast :(
+    private fun recycleViews() = GlobalScope.launch {
+        for (i in 0 until recyclerView.childCount) {
+            val holder = recyclerView.getChildViewHolder(recyclerView.getChildAt(i))
+            if (holder is VideoViewHolder)
+                holder.recycleView()
+            if (holder is ImageViewHolder)
+                holder.recycleView()
+        }
+        adapter = null
+        runOnUiThread { recyclerView.adapter = null }
         decryptFiles()
     }
 
@@ -488,7 +504,7 @@ class MainActivity : AppCompatActivity() {
         for (folder in actualFolder?.folders!!)
             if (folder.name == text) return folder
 
-        throw NotImplementedError("Oups error :( , did not find a folder with name : $text in ${actualFolder?.name}")
+        throw NotImplementedError("Error, did not find a folder with name : $text in ${actualFolder?.name}")
     }
 
     private fun setAnimation() {
@@ -557,7 +573,8 @@ class MainActivity : AppCompatActivity() {
                     event?.action == MotionEvent.ACTION_DOWN -> initialY = event.y
                     event?.action == MotionEvent.ACTION_UP -> {
                         if (Math.abs(initialY - event.y) in 1600.0..2100.0)
-                            if (fullScreen is FullScreenImage || fullScreen is FullScreenVideo && !(fullScreen as FullScreenVideo).isScaling)
+                            if (fullScreen is FullScreenImage && !(fullScreen as FullScreenImage).isScaling
+                                || fullScreen is FullScreenVideo && !(fullScreen as FullScreenVideo).isScaling)
                                 fullScreen?.dismiss()
                     }
                 }

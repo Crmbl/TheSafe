@@ -108,6 +108,8 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
     override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
         if (holder is VideoViewHolder)
             holder.resumeVideo()
+        if (holder is ImageViewHolder)
+            holder.resumeGif()
 
         super.onViewAttachedToWindow(holder)
     }

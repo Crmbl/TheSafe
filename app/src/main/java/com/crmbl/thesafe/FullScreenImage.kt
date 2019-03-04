@@ -1,5 +1,7 @@
 package com.crmbl.thesafe
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import com.bumptech.glide.load.engine.GlideException
@@ -13,6 +15,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.resource.gif.GifDrawable
 import com.bumptech.glide.request.target.Target
+import com.crmbl.thesafe.listeners.ComposableAnimatorListener
 
 
 @SuppressLint("ClickableViewAccessibility", "InflateParams")
@@ -24,17 +27,24 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
     internal var photoView: PhotoView
     internal var loading: ProgressBar
     private var lockLayout: FrameLayout
+    private var rotateButton: ImageButton
+    private var isLandscape: Boolean = false
+    private var frame: RelativeLayout
+    var isScaling: Boolean = false
 
     init {
         isOutsideTouchable = true
         elevation = 5.0f
         isFocusable = true
 
+        frame = view.findViewById(R.id.rl_custom_layout)
         lockLayout = view.findViewById(R.id.layout_lock)
         photoView = view.findViewById(R.id.image)
+        rotateButton = view.findViewById(R.id.controller_rotate)
         loading = view.findViewById(R.id.loading)
         val closeButton = this.view.findViewById(R.id.ib_close) as ImageButton
         closeButton.setOnClickListener { dismiss() }
+        rotateButton.setOnClickListener { rotate() }
 
         photoView.maximumScale = 6f
         loading.isIndeterminate = true
@@ -68,6 +78,7 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
             }
         }
 
+        photoView.setOnScaleChangeListener { _, _, _ -> this@FullScreenImage.isScaling = photoView.scale > 1f  }
         showAtLocation(v, Gravity.CENTER, 0, 0)
     }
 
@@ -77,5 +88,33 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
 
     fun onResume() {
         lockLayout.visibility = View.GONE
+    }
+
+    private fun rotate() {
+        photoView.isZoomable = false
+        val rotateDegree: Float = if (isLandscape) 0f else 90f
+        val scaleFactor: Float = if (isLandscape) 1f
+            else {
+                if (photoView.width >= photoView.height) frame.width.toFloat() / photoView.height.toFloat()
+                else frame.height.toFloat() / photoView.width.toFloat()
+        }
+
+        val animatorSet = AnimatorSet()
+        animatorSet.duration = 500
+        animatorSet.playTogether(
+            ObjectAnimator.ofFloat(photoView, "rotation", rotateDegree),
+            ObjectAnimator.ofFloat(rotateButton, "rotation", rotateDegree),
+            ObjectAnimator.ofFloat(photoView, "scaleX", scaleFactor),
+            ObjectAnimator.ofFloat(photoView, "scaleY", scaleFactor)
+        )
+        animatorSet.addListener(ComposableAnimatorListener {
+            isLandscape = !isLandscape
+            photoView.isZoomable = true
+
+            //TODO when isLandscape, can't scroll vertically
+            if (isLandscape)
+                photoView.scale = 1f
+        })
+        animatorSet.start()
     }
 }

@@ -31,6 +31,7 @@ class VideoViewHolder(itemView: View, private val activity: MainActivity?): Recy
     private val videoView : PlayerView = itemView.findViewById(R.id.videoView)
     private val bottomLayout : LinearLayout = itemView.findViewById(R.id.bottom_layout)
     private var player: SimpleExoPlayer? = null
+    private var isRecycling: Boolean = false
 
     fun bind(file : File, mRecyclerView: RecyclerView?) {
         val splitedName = file.originName.split('.')
@@ -55,7 +56,7 @@ class VideoViewHolder(itemView: View, private val activity: MainActivity?): Recy
         val mediaSource = ExtractorMediaSource.Factory(factory).createMediaSource(mediaByteUri)
 
         player?.prepare(mediaSource)
-        player?.playWhenReady = true
+        player?.playWhenReady = false
         player?.volume = 0f
         player?.repeatMode = Player.REPEAT_MODE_ALL
         videoView.hideController()
@@ -69,12 +70,18 @@ class VideoViewHolder(itemView: View, private val activity: MainActivity?): Recy
     }
 
     fun clearAnimation() {
-        videoView.exo_pause.performClick()
+        if (!isRecycling)
+            player?.playWhenReady = false
         itemView.clearAnimation()
     }
 
     fun resumeVideo() {
-        videoView.exo_play.performClick()
+        player?.playWhenReady = true
+    }
+
+    fun recycleView() {
+        isRecycling = true
+        player?.release()
     }
 }
 
