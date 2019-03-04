@@ -30,6 +30,8 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
     private var rotateButton: ImageButton
     private var isLandscape: Boolean = false
     private var frame: RelativeLayout
+    private var gif : GifDrawable? = null
+    private var bitmap : Bitmap? = null
     var isScaling: Boolean = false
 
     init {
@@ -58,7 +60,8 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
                     .listener(object : RequestListener<GifDrawable> {
                         override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<GifDrawable>?, isFirstResource: Boolean): Boolean { return false }
                         override fun onResourceReady(resource: GifDrawable?, model: Any?, target: Target<GifDrawable>?, dataSource: DataSource?, isFirstResource: Boolean): Boolean {
-                            photoView.setImageDrawable(resource)
+                            gif = resource
+                            photoView.setImageDrawable(gif)
                             loading.visibility = View.GONE
                             return false
                         }
@@ -70,7 +73,8 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
                     .listener(object : RequestListener<Bitmap> {
                         override fun onLoadFailed(e: GlideException?, model: Any?, target: com.bumptech.glide.request.target.Target<Bitmap>?, isFirstResource: Boolean): Boolean { return false }
                         override fun onResourceReady(resource: Bitmap, model: Any, target: com.bumptech.glide.request.target.Target<Bitmap>?, dataSource: DataSource, isFirstResource: Boolean): Boolean {
-                            photoView.setImageBitmap(resource)
+                            bitmap = resource
+                            photoView.setImageBitmap(bitmap)
                             loading.visibility = View.GONE
                             return false
                         }
@@ -116,5 +120,19 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
                 photoView.scale = 1f
         })
         animatorSet.start()
+    }
+
+    override fun dismiss() {
+        photoView.setImageDrawable(null)
+        if (bitmap != null) {
+            bitmap?.recycle()
+            bitmap = null
+        }
+        if (gif != null) {
+            gif?.recycle()
+            gif = null
+        }
+
+        super.dismiss()
     }
 }

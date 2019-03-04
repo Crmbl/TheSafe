@@ -466,7 +466,6 @@ class MainActivity : AppCompatActivity() {
     private fun navigate(direction : Boolean?) {
         emptyLayout.animate().alpha(0f).setDuration(125).withEndAction{
             emptyLayout.visibility = View.INVISIBLE; emptyLayout.alpha = 1f }.start()
-
         recyclerView.animate().alpha(0f).setDuration(125).withEndAction{
             recyclerView.visibility = View.INVISIBLE
             recyclerView.alpha = 1f
@@ -486,17 +485,21 @@ class MainActivity : AppCompatActivity() {
         recycleViews()
     }
 
-    //TODO crash if user click too fast :(
     private fun recycleViews() = GlobalScope.launch {
-        for (i in 0 until recyclerView.childCount) {
-            val holder = recyclerView.getChildViewHolder(recyclerView.getChildAt(i))
-            if (holder is VideoViewHolder)
-                holder.recycleView()
-            if (holder is ImageViewHolder)
-                holder.recycleView()
+        runOnUiThread {
+            for (i in 0 until recyclerView.childCount) {
+                val holder = recyclerView.getChildViewHolder(recyclerView.getChildAt(i))
+                if (holder is VideoViewHolder)
+                    holder.recycleView()
+                if (holder is ImageViewHolder)
+                    holder.recycleView(this@MainActivity)
+            }
+
+            val actualFolderFiltered = actualFolder?.files?.filter{f-> f.originName.toLowerCase().contains(query.toLowerCase())}
+            for (file in actualFolderFiltered!!.toList()) {
+                file.decrypted = null
+            }
         }
-        adapter = null
-        runOnUiThread { recyclerView.adapter = null }
         decryptFiles()
     }
 

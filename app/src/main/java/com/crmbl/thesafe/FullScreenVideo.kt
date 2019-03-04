@@ -249,7 +249,6 @@ class FullScreenVideo(mContext: Context, v: View, imageBytes: ByteArray) :
             hideController()
         else
             showController()
-
         return true
     }
 

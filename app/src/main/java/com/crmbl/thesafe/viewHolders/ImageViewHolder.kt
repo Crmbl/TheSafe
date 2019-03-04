@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.crmbl.thesafe.File
+import com.crmbl.thesafe.MainActivity
 import com.crmbl.thesafe.R
 import pl.droidsonroids.gif.GifDrawable
 import pl.droidsonroids.gif.GifImageView
@@ -47,8 +48,10 @@ class ImageViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
             (drawable as GifDrawable).start()
     }
 
-    fun recycleView() {
+    fun recycleView(activity: MainActivity) {
         if (drawable == null) return
+
+        activity.runOnUiThread { mediaView.setImageDrawable(null) }
         if (drawable is GifDrawable)
             (drawable as GifDrawable).recycle()
         if (drawable is BitmapDrawable)

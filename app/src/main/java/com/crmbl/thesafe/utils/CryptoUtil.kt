@@ -51,26 +51,6 @@ data class CryptoUtil(
         }
     }
 
-    fun decryptToFile(inputFile: java.io.File, decryptedFile: java.io.File) {
-        val password =
-            PasswordDeriveBytes(_password, _salt.toByteArray(Charsets.US_ASCII), "SHA1", 2)
-        val pass32: ByteArray = password.getBytes(32)
-        val pass16: ByteArray = password.getBytes(16)
-
-        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-        FileInputStream(inputFile).use { fileIn ->
-            val tmpByte = ByteArray(4)
-            fileIn.read(tmpByte, 0 , 4)
-            cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(pass32, "SHA1PRNG"), IvParameterSpec(pass16))
-
-            CipherInputStream(fileIn, cipher).use { cipherIn ->
-                FileOutputStream(decryptedFile).use { outputStream ->
-                    outputStream.write(cipherIn.readBytes())
-                }
-            }
-        }
-    }
-
     @Throws(Exception::class)
     fun toInt32(bytes:ByteArray, index:Int):Int  {
         if (bytes.size != 4)
