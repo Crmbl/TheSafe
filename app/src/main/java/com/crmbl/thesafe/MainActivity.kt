@@ -59,6 +59,10 @@ class MainActivity : AppCompatActivity() {
     private var fullScreen: PopupWindow? = null
     private var query: String = ""
     private var imageFileExtensions: Array<String> = arrayOf("gif", "png", "jpg", "jpeg", "bmp", "pdf")
+    private lateinit var cryptedMapping : java.io.File
+    private lateinit var cryptoUtil : CryptoUtil
+    private lateinit var theSafeFolder : java.io.File
+    private lateinit var prefs : Prefs
 
     private lateinit var recyclerView : RecyclerView
     private lateinit var lockLayout : FrameLayout
@@ -68,12 +72,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bottomBar : BottomAppBar
     private lateinit var searchView: SearchView
     private lateinit var chipGroup : ChipGroup
-    private lateinit var prefs : Prefs
     private lateinit var layoutManager : LinearLayoutManager
     private lateinit var broadcastReceiver: BroadcastReceiver
-    private lateinit var cryptedMapping : java.io.File
-    private lateinit var cryptoUtil : CryptoUtil
-    private lateinit var theSafeFolder : java.io.File
 
     //region override methods
 
@@ -508,7 +508,7 @@ class MainActivity : AppCompatActivity() {
     /////////////////////////////////////////////////////////////////////////////////////////////
     //TODO kind of useless for video it seems
     private fun setBitmapSize(file: File, path: String) {
-        try {
+        /*try {
             //TODO TEST
             val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             val fd = applicationContext.contentResolver.openFileDescriptor(Uri.parse(path), "r")
@@ -517,15 +517,15 @@ class MainActivity : AppCompatActivity() {
             file.height = options.outHeight
             android.util.Log.d("BitmapFactory", "fileHeight: ${file.height} // fileWidth: ${file.width} // type: ${file.type}")
 
-            /*val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            *//*val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(file.decrypted, 0, file.decrypted!!.size, options)
             file.width = options.outWidth
-            file.height = options.outHeight*/
+            file.height = options.outHeight*//*
             //android.util.Log.d("BitmapFactory", "fileHeight: ${file.height} // fileWidth: ${file.width} // type: ${file.type}")
         }
         catch (ex: Exception) {
             throw Exception(ex.message)
-        }
+        }*/
     }
     /////////////////////////////////////////////////////////////////////////////////////////////
 

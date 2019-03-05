@@ -2,7 +2,6 @@ package com.crmbl.thesafe.viewHolders
 
 import android.content.res.Resources
 import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 import android.view.View
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
@@ -14,49 +13,47 @@ import pl.droidsonroids.gif.GifImageView
 
 class ImageViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
 
-    private val textViewTitle : TextView = itemView.findViewById(R.id.textview_title)
-    private val textViewExt : TextView = itemView.findViewById(R.id.textview_ext)
-    private val mediaView : GifImageView = itemView.findViewById(R.id.imageView)
-    private var drawable : Drawable? = null
-
     fun bind(file : File) {
         val splitedName = file.originName.split('.')
-        textViewTitle.text = splitedName.first()
-        textViewExt.text = splitedName.last()
+        itemView.findViewById<TextView>(R.id.textview_title).text = splitedName.first()
+        itemView.findViewById<TextView>(R.id.textview_ext).text = splitedName.last()
 
         when {
             splitedName.last().toLowerCase() == "gif" -> {
-                drawable = GifDrawable(file.decrypted!!.inputStream())
-                mediaView.setImageDrawable(drawable)
+                itemView.findViewById<GifImageView>(R.id.imageView).setImageDrawable(
+                    GifDrawable(file.decrypted!!.inputStream()))
             }
             else -> {
-                drawable = BitmapDrawable(Resources.getSystem(), file.decrypted!!.inputStream())
-                mediaView.setImageDrawable(drawable)
+                itemView.findViewById<GifImageView>(R.id.imageView).setImageDrawable(
+                    BitmapDrawable(Resources.getSystem(), file.decrypted!!.inputStream()))
             }
         }
     }
 
     fun clearAnimation() {
-        if (drawable != null && drawable is GifDrawable)
-            (drawable as GifDrawable).pause()
+        val mediaView = itemView.findViewById<GifImageView>(R.id.imageView)
+        if (mediaView.drawable != null && mediaView.drawable is GifDrawable)
+            (mediaView.drawable as GifDrawable).pause()
 
         itemView.clearAnimation()
     }
 
     fun resumeGif() {
-        if (drawable != null && drawable is GifDrawable)
-            (drawable as GifDrawable).start()
+        val mediaView = itemView.findViewById<GifImageView>(R.id.imageView)
+        if (mediaView.drawable != null && mediaView.drawable is GifDrawable)
+            (mediaView.drawable as GifDrawable).start()
     }
 
     fun recycleView(activity: MainActivity) {
-        if (drawable == null) return
+        val mediaView = itemView.findViewById<GifImageView>(R.id.imageView)
+        if (mediaView.drawable == null) return
+
+        val mediaViewDrawable = mediaView.drawable
+        if (mediaViewDrawable is GifDrawable)
+            mediaViewDrawable.recycle()
+        if (mediaViewDrawable is BitmapDrawable)
+            mediaViewDrawable.bitmap.recycle()
 
         activity.runOnUiThread { mediaView.setImageDrawable(null) }
-        if (drawable is GifDrawable)
-            (drawable as GifDrawable).recycle()
-        if (drawable is BitmapDrawable)
-            (drawable as BitmapDrawable).bitmap.recycle()
-
-        drawable = null
     }
 }

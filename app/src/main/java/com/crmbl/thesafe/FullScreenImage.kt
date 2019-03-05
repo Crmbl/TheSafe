@@ -9,6 +9,7 @@ import com.bumptech.glide.request.RequestListener
 import android.content.Context
 import com.github.chrisbanes.photoview.PhotoView
 import android.content.Context.LAYOUT_INFLATER_SERVICE
+import android.graphics.drawable.BitmapDrawable
 import android.view.*
 import android.widget.*
 import com.bumptech.glide.Glide
@@ -18,21 +19,13 @@ import com.bumptech.glide.request.target.Target
 import com.crmbl.thesafe.listeners.ComposableAnimatorListener
 
 
+//TODO when isLandscape, can't scroll vertically
 @SuppressLint("ClickableViewAccessibility", "InflateParams")
 class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt : String) :
     PopupWindow((mContext.getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater).inflate(
             R.layout.image_fullscreen, null), ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT) {
 
-    internal var view: View = contentView
-    internal var photoView: PhotoView
-    internal var loading: ProgressBar
-    private var lockLayout: FrameLayout
-    private var rotateButton: ImageButton
-    private var closeButton: ImageButton
     private var isLandscape: Boolean = false
-    private var frame: RelativeLayout
-    private var gif : GifDrawable? = null
-    private var bitmap : Bitmap? = null
     var isScaling: Boolean = false
 
     init {
@@ -40,12 +33,10 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
         elevation = 5.0f
         isFocusable = true
 
-        frame = view.findViewById(R.id.rl_custom_layout)
-        lockLayout = view.findViewById(R.id.layout_lock)
-        photoView = view.findViewById(R.id.image)
-        rotateButton = view.findViewById(R.id.controller_rotate)
-        loading = view.findViewById(R.id.loading)
-        closeButton = this.view.findViewById(R.id.ib_close) as ImageButton
+        val photoView = contentView.findViewById<PhotoView>(R.id.image)
+        val loading = contentView.findViewById<ProgressBar>(R.id.loading)
+        val rotateButton = contentView.findViewById<ImageButton>(R.id.controller_rotate)
+        val closeButton = contentView.findViewById<ImageButton>(R.id.ib_close)
 
         closeButton.setOnClickListener { dismiss() }
         rotateButton.setOnClickListener { rotate() }
@@ -62,8 +53,7 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
                     .listener(object : RequestListener<GifDrawable> {
                         override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<GifDrawable>?, isFirstResource: Boolean): Boolean { return false }
                         override fun onResourceReady(resource: GifDrawable?, model: Any?, target: Target<GifDrawable>?, dataSource: DataSource?, isFirstResource: Boolean): Boolean {
-                            gif = resource
-                            photoView.setImageDrawable(gif)
+                            photoView.setImageDrawable(resource)
                             loading.visibility = View.GONE
                             return false
                         }
@@ -75,8 +65,7 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
                     .listener(object : RequestListener<Bitmap> {
                         override fun onLoadFailed(e: GlideException?, model: Any?, target: com.bumptech.glide.request.target.Target<Bitmap>?, isFirstResource: Boolean): Boolean { return false }
                         override fun onResourceReady(resource: Bitmap, model: Any, target: com.bumptech.glide.request.target.Target<Bitmap>?, dataSource: DataSource, isFirstResource: Boolean): Boolean {
-                            bitmap = resource
-                            photoView.setImageBitmap(bitmap)
+                            photoView.setImageBitmap(resource)
                             loading.visibility = View.GONE
                             return false
                         }
@@ -89,14 +78,18 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
     }
 
     fun onPause() {
-        lockLayout.visibility = View.VISIBLE
+        contentView.findViewById<FrameLayout>(R.id.layout_lock).visibility = View.VISIBLE
     }
 
     fun onResume() {
-        lockLayout.visibility = View.GONE
+        contentView.findViewById<FrameLayout>(R.id.layout_lock).visibility = View.GONE
     }
 
     private fun rotate() {
+        val photoView = contentView.findViewById<PhotoView>(R.id.image)
+        val frame = contentView.findViewById<RelativeLayout>(R.id.rl_custom_layout)
+        val rotateButton = contentView.findViewById<ImageButton>(R.id.controller_rotate)
+
         photoView.isZoomable = false
         val rotateDegree: Float = if (isLandscape) 0f else 90f
         val scaleFactor: Float = if (isLandscape) 1f
@@ -116,19 +109,17 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
         animatorSet.addListener(ComposableAnimatorListener {
             isLandscape = !isLandscape
             photoView.isZoomable = true
-
-            //TODO when isLandscape, can't scroll vertically
-            if (isLandscape)
-                photoView.scale = 1f
+            photoView.scale = 1f
         })
         animatorSet.start()
     }
 
     override fun dismiss() {
-        photoView.setImageDrawable(null)
-        if (bitmap != null) bitmap?.recycle(); bitmap = null
-        if (gif != null) gif?.recycle(); gif = null
+        val drawable = contentView.findViewById<PhotoView>(R.id.image).drawable
+        if (drawable is BitmapDrawable) drawable.bitmap.recycle()
+        //if (drawable is GifDrawable) drawable.recycle()
 
+        contentView.findViewById<PhotoView>(R.id.image).setImageDrawable(null)
         super.dismiss()
     }
 }
