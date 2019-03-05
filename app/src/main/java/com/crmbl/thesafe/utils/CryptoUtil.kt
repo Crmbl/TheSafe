@@ -44,8 +44,8 @@ data class CryptoUtil(
             cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(pass32, "SHA1PRNG"), IvParameterSpec(pass16))
 
             CipherInputStream(fileIn, cipher).use { cipherIn ->
-                ByteArrayInputStream(cipherIn.readBytes(), 0, toInt32(tmpByte, 0)).use { byteStream ->
-                    return byteStream.readBytes()
+                return ByteArrayInputStream(cipherIn.readBytes(), 0, toInt32(tmpByte, 0)).use { byteStream ->
+                    byteStream.readBytes()
                 }
             }
         }

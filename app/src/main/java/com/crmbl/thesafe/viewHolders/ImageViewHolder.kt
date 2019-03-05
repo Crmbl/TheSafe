@@ -26,7 +26,7 @@ class ImageViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
 
         when {
             splitedName.last().toLowerCase() == "gif" -> {
-                drawable = GifDrawable(file.decrypted!!)
+                drawable = GifDrawable(file.decrypted!!.inputStream())
                 mediaView.setImageDrawable(drawable)
             }
             else -> {

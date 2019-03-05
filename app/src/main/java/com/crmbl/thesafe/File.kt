@@ -10,7 +10,11 @@ data class File(
     @Json(ignored = true)
     var decrypted : ByteArray? = null,
     @Json(ignored = true)
-    var type : String = ""
+    var type : String = "",
+    @Json(ignored = true)
+    var width : Int = 0,
+    @Json(ignored = true)
+    var height : Int = 0
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

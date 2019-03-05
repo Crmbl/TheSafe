@@ -10,6 +10,7 @@
     <color name="colorEmphasis">#ffffff</color>
     <color name="colorBackground">#303030</color>
     <color name="colorItemBackground">#424242</color>
+    <color name="colorItemBackgroundLighter">#737373</color>
     <color name="colorItemBackgroundOpacity">#B3424242</color>
     <color name="mtrl_textinput_default_box_stroke_color" tools:override="true">#bbbb</color>
 </resources>

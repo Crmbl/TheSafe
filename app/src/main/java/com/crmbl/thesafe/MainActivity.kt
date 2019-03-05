@@ -6,7 +6,12 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Resources
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
+import android.os.ParcelFileDescriptor
 import android.transition.Fade
 import android.util.TypedValue
 import android.view.MotionEvent
@@ -265,6 +270,7 @@ class MainActivity : AppCompatActivity() {
                         file.type = "videoView"
 
                     file.decrypted = cryptoUtil.decrypt(realFile)
+                    setBitmapSize(file, realFile.path)
                     loadedFiles++
                 }
             }
@@ -315,6 +321,7 @@ class MainActivity : AppCompatActivity() {
                             file.type = "videoView"
 
                         file.decrypted = cryptoUtil.decrypt(realFile)
+                        setBitmapSize(file, realFile.path)
                         loadedFiles++
                         tmpFiles.add(file)
 
@@ -337,7 +344,7 @@ class MainActivity : AppCompatActivity() {
             && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount)
             tmpFiles.add(File("", "", null, "scrollUp"))
 
-        files?.removeAt(files!!.lastIndex)
+        if (files?.size != 0) files?.removeAt(files!!.lastIndex)
         files?.addAll(tmpFiles)
         runOnUiThread{ adapter?.notifyDataSetChanged() }
     }
@@ -494,14 +501,33 @@ class MainActivity : AppCompatActivity() {
                 if (holder is ImageViewHolder)
                     holder.recycleView(this@MainActivity)
             }
-
-            val actualFolderFiltered = actualFolder?.files?.filter{f-> f.originName.toLowerCase().contains(query.toLowerCase())}
-            for (file in actualFolderFiltered!!.toList()) {
-                file.decrypted = null
-            }
         }
         decryptFiles()
     }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////
+    //TODO kind of useless for video it seems
+    private fun setBitmapSize(file: File, path: String) {
+        try {
+            //TODO TEST
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            val fd = applicationContext.contentResolver.openFileDescriptor(Uri.parse(path), "r")
+            BitmapFactory.decodeFileDescriptor(fd.fileDescriptor, null, options)
+            file.width = options.outWidth
+            file.height = options.outHeight
+            android.util.Log.d("BitmapFactory", "fileHeight: ${file.height} // fileWidth: ${file.width} // type: ${file.type}")
+
+            /*val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(file.decrypted, 0, file.decrypted!!.size, options)
+            file.width = options.outWidth
+            file.height = options.outHeight*/
+            //android.util.Log.d("BitmapFactory", "fileHeight: ${file.height} // fileWidth: ${file.width} // type: ${file.type}")
+        }
+        catch (ex: Exception) {
+            throw Exception(ex.message)
+        }
+    }
+    /////////////////////////////////////////////////////////////////////////////////////////////
 
     private fun findFolder(text : CharSequence?) : Folder? {
         for (folder in actualFolder?.folders!!)
@@ -547,7 +573,6 @@ class MainActivity : AppCompatActivity() {
         bottomBar.visibility = View.INVISIBLE
         scrollView.visibility = View.INVISIBLE
 
-        fullScreen = null
         when {
             file.type == "imageView" -> fullScreen = FullScreenImage(applicationContext, view, file.decrypted!!, file.originName.split('.').last())
             file.type == "videoView" -> fullScreen = FullScreenVideo(applicationContext, view, file.decrypted!!)
@@ -563,6 +588,7 @@ class MainActivity : AppCompatActivity() {
         fullScreen?.exitTransition = fadeOut
 
         fullScreen!!.setOnDismissListener { popupDismissed = true
+            fullScreen = null
             if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
                 bottomBar.visibility = View.VISIBLE
                 scrollView.visibility = View.VISIBLE

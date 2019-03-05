@@ -20,9 +20,11 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
     private var lastPosition = -1
     private var mRecyclerView: RecyclerView? = null
 
+    //region override methods
+
     override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
-        super.onAttachedToRecyclerView(recyclerView)
         mRecyclerView = recyclerView
+        super.onAttachedToRecyclerView(recyclerView)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -96,6 +98,15 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
         }
     }
 
+    override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
+        if (holder is VideoViewHolder)
+            holder.resumeVideo()
+        if (holder is ImageViewHolder)
+            holder.resumeGif()
+
+        super.onViewAttachedToWindow(holder)
+    }
+
     override fun onViewDetachedFromWindow(holder: RecyclerView.ViewHolder) {
         if (holder is ImageViewHolder)
             holder.clearAnimation()
@@ -105,14 +116,16 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
         super.onViewDetachedFromWindow(holder)
     }
 
-    override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
+    override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
         if (holder is VideoViewHolder)
-            holder.resumeVideo()
+            holder.recycleView()
         if (holder is ImageViewHolder)
-            holder.resumeGif()
+            holder.recycleView(activity!!)
 
-        super.onViewAttachedToWindow(holder)
+        super.onViewRecycled(holder)
     }
+
+    //endregion override methods
 
     private fun setAnimation(itemView: View, position: Int) {
         if (position > lastPosition) {

@@ -28,6 +28,7 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
     internal var loading: ProgressBar
     private var lockLayout: FrameLayout
     private var rotateButton: ImageButton
+    private var closeButton: ImageButton
     private var isLandscape: Boolean = false
     private var frame: RelativeLayout
     private var gif : GifDrawable? = null
@@ -44,7 +45,8 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
         photoView = view.findViewById(R.id.image)
         rotateButton = view.findViewById(R.id.controller_rotate)
         loading = view.findViewById(R.id.loading)
-        val closeButton = this.view.findViewById(R.id.ib_close) as ImageButton
+        closeButton = this.view.findViewById(R.id.ib_close) as ImageButton
+
         closeButton.setOnClickListener { dismiss() }
         rotateButton.setOnClickListener { rotate() }
 
@@ -124,14 +126,8 @@ class FullScreenImage(mContext: Context, v: View, imageBytes: ByteArray, fileExt
 
     override fun dismiss() {
         photoView.setImageDrawable(null)
-        if (bitmap != null) {
-            bitmap?.recycle()
-            bitmap = null
-        }
-        if (gif != null) {
-            gif?.recycle()
-            gif = null
-        }
+        if (bitmap != null) bitmap?.recycle(); bitmap = null
+        if (gif != null) gif?.recycle(); gif = null
 
         super.dismiss()
     }

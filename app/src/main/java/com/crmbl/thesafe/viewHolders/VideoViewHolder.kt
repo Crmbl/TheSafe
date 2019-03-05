@@ -37,6 +37,7 @@ class VideoViewHolder(itemView: View, private val activity: MainActivity?): Recy
         val splitedName = file.originName.split('.')
         textViewTitle.text = splitedName.first()
         textViewExt.text = splitedName.last()
+        itemView.findViewById<FrameLayout>(R.id.waiting_frame).visibility = View.VISIBLE
         var params = bottomLayout.layoutParams as RelativeLayout.LayoutParams
         params.addRule(RelativeLayout.BELOW, R.id.waiting_frame)
         bottomLayout.layoutParams = params
@@ -47,6 +48,20 @@ class VideoViewHolder(itemView: View, private val activity: MainActivity?): Recy
             videoView.exo_pause.performClick()
             activity?.showPopup(v!!, 0, file)
         }
+
+        //TODO improve behavior of controller, show on double tap like fullscreen
+        //TODO remove layout_height from waiting_frame
+        //TODO won't work for video : BitmapFactory.decode
+        /*val scale = activity!!.resources.displayMetrics.density
+        val ratio: Float = videoView.width.toFloat() / file.width.toFloat()
+        val tHeight = file.height * ratio * scale
+        videoView.minimumHeight = tHeight.toInt()
+        itemView.findViewById<FrameLayout>(R.id.waiting_frame).minimumHeight = tHeight.toInt()
+        //videoView.minimumWidth = file.width
+
+        //android.util.Log.d("VideoHolder", "scale: $scale // ratio: $ratio // tHeight: $tHeight // fileHeight: ${file.height} // fileWidth: ${file.width}")
+        android.util.Log.d("TEST : VideoView", "Width: ${videoView.width} // Height: ${videoView.height}")
+        android.util.Log.d("TEST : File", "Width: ${file.width} // Height: ${file.height}")*/
 
         val byteArrayDataSource = ByteArrayDataSource(file.decrypted!!)
         val mediaByteUri = UriByteDataHelper().getUri(file.decrypted!!)
@@ -70,8 +85,7 @@ class VideoViewHolder(itemView: View, private val activity: MainActivity?): Recy
     }
 
     fun clearAnimation() {
-        if (!isRecycling)
-            player?.playWhenReady = false
+        if (!isRecycling) player?.playWhenReady = false
         itemView.clearAnimation()
     }
 
