@@ -14,9 +14,9 @@
 
     <FrameLayout android:id="@+id/waiting_frame"
             android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:backgroundTint="@color/colorItemBackgroundLighter"
-            android:background="@drawable/bg_listitem_rounded">
+            android:layout_height="wrap_content"
+            android:background="#000"
+            android:elevation="1dp">
 
         <com.github.ybq.android.spinkit.SpinKitView
                 android:id="@+id/loading"

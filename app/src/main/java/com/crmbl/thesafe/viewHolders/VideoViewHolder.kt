@@ -26,8 +26,6 @@ import java.io.IOException
 
 
 //TODO improve behavior of controller, show on double tap like fullscreen
-//TODO remove layout_height from waiting_frame
-//TODO won't work for video : BitmapFactory.decode
 @Suppress("DEPRECATION")
 class VideoViewHolder(itemView: View/*, private val activity: MainActivity?*/): RecyclerView.ViewHolder(itemView) {
 
@@ -37,8 +35,11 @@ class VideoViewHolder(itemView: View/*, private val activity: MainActivity?*/): 
         val splitedName = file.originName.split('.')
         itemView.findViewById<TextView>(R.id.textview_title).text = splitedName.first()
         itemView.findViewById<TextView>(R.id.textview_ext).text = splitedName.last()
-        itemView.findViewById<FrameLayout>(R.id.waiting_frame).visibility = View.VISIBLE
 
+        val waitingFrame = itemView.findViewById<FrameLayout>(R.id.waiting_frame)
+        waitingFrame.visibility = View.VISIBLE
+        waitingFrame.minimumHeight = file.height.toInt()
+        waitingFrame.minimumWidth = file.width.toInt()
         val bottomLayout = itemView.findViewById<LinearLayout>(R.id.bottom_layout)
         val params = bottomLayout.layoutParams as RelativeLayout.LayoutParams
         params.addRule(RelativeLayout.BELOW, R.id.waiting_frame)
@@ -52,18 +53,13 @@ class VideoViewHolder(itemView: View/*, private val activity: MainActivity?*/): 
         player.repeatMode = Player.REPEAT_MODE_ALL
 
         videoView.player = player
+        videoView.controllerAutoShow = false
+        videoView.hideController()
         videoView.exo_fullscreen.setOnClickListener { v ->
             videoView.exo_pause.performClick()
             //TODO remove the activity param, awful, use interface/listener to forward event to MainActivity
             //activity?.showPopup(v!!, 0, file)
         }
-
-        /*val scale = activity!!.resources.displayMetrics.density
-        val ratio: Float = videoView.width.toFloat() / file.width.toFloat()
-        val tHeight = file.height * ratio * scale
-        videoView.minimumHeight = tHeight.toInt()
-        itemView.findViewById<FrameLayout>(R.id.waiting_frame).minimumHeight = tHeight.toInt()
-        //videoView.minimumWidth = file.width*/
 
         var decrypted : ByteArray? = null
         CoroutineScope(Dispatchers.Main + Job()).launch {
@@ -79,8 +75,8 @@ class VideoViewHolder(itemView: View/*, private val activity: MainActivity?*/): 
             val factory = object : DataSource.Factory { override fun createDataSource(): DataSource { return byteArrayDataSource } }
             val mediaSource = ExtractorMediaSource.Factory(factory).createMediaSource(mediaByteUri)
 
-            player.prepare(mediaSource)
-            videoView.hideController()
+            val view = itemView.findViewById<PlayerView>(R.id.videoView)
+            (view.player as SimpleExoPlayer).prepare(mediaSource)
         }
     }
 

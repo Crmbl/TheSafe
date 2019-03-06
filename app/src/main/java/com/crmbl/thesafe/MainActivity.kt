@@ -6,12 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.res.Resources
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.net.Uri
 import android.os.Bundle
-import android.os.ParcelFileDescriptor
 import android.transition.Fade
 import android.util.TypedValue
 import android.view.MotionEvent
@@ -37,8 +32,7 @@ import com.crmbl.thesafe.viewHolders.VideoViewHolder
 import com.github.ybq.android.spinkit.style.CubeGrid
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 
 
 //TODO improve min height, not really nice
@@ -171,12 +165,14 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-//        recyclerView.addOnItemTouchListener(RecyclerItemClickListener(this, recyclerView,
-//            object: RecyclerItemClickListener.OnItemClickListener{
-//                override fun onLongItemClick(view: View?, position: Int) {}
-//                override fun onItemClick(view: View, position: Int) { showPopup(view, position) }
-//            })
-//        )
+        recyclerView.addOnItemTouchListener(RecyclerItemClickListener(this, recyclerView,
+            object: RecyclerItemClickListener.OnItemClickListener{
+                override fun onLongItemClick(view: View?, position: Int) {}
+                override fun onItemClick(view: View, position: Int) {
+                    //showPopup(view, position)
+                }
+            })
+        )
 
         goSettings.setOnClickListener {this.goSettings()}
 
@@ -242,25 +238,34 @@ class MainActivity : AppCompatActivity() {
 
     //region async methods
 
-    private fun decryptMappingFile() = GlobalScope.launch {
+    private fun decryptMappingFile() {
         try{
             for (file in theSafeFolder.listFiles()) {
                 if (CryptoUtil.decipher(file.name) == "mapping.json")
                     cryptedMapping = file
             }
 
-            mapping = Klaxon().parse<Folder>(CryptoUtil.decrypt(cryptedMapping)!!.inputStream())
-            setParent(mapping!!)
-            actualFolder = mapping!!
-            decryptFiles()
+            CoroutineScope(Dispatchers.Main + Job()).launch {
+                val deferred = async(Dispatchers.Default) {
+                    mapping = Klaxon().parse<Folder>(CryptoUtil.decrypt(cryptedMapping)!!.inputStream())
+                }
+
+                deferred.await()
+
+                setParent(mapping!!)
+                actualFolder = mapping!!
+                decryptFiles()
+            }
         }
         catch(ex : Exception) { throw Exception("Error: ${ex.message}") }
     }
 
-    private fun decryptFiles() = GlobalScope.launch {
+    private fun decryptFiles() = CoroutineScope(Dispatchers.Main + Job()).launch {
         createChips(actualFolder!!)
         val actualFolderFiltered = actualFolder?.files?.filter{f-> f.originName.toLowerCase().contains(query.toLowerCase())}
 
+        val displayMetrics = applicationContext.resources.displayMetrics
+        val fWidth = (displayMetrics.widthPixels - Math.round(12 * displayMetrics.density))
         for ((i, file) in actualFolderFiltered?.withIndex()!!) {
             if (i == loadLimit) break
             for (realFile in theSafeFolder.listFiles()) {
@@ -269,48 +274,55 @@ class MainActivity : AppCompatActivity() {
                     else file.type = "videoView"
 
                     file.path = realFile.path
-                    //file.decrypted = cryptoUtil.decrypt(realFile)
-                    //setBitmapSize(file, realFile.path)
+                    if (!file.frozen) {
+                        val ratio: Float = fWidth / file.width.toFloat()
+                        val fHeight = ratio * file.height.toFloat()
+
+                        file.height = Math.round(fHeight).toString()
+                        file.width = fWidth.toString()
+                        file.frozen = true
+                    }
                     loadedFiles++
                 }
             }
         }
 
-        runOnUiThread {
-            if (progressBar.visibility != View.GONE) {
-                progressBar.animate().alpha(0f).setDuration(125).withEndAction{
-                    progressBar.visibility = View.GONE
-                    progressBar.alpha = 1f
-                    if (recyclerView.visibility != View.VISIBLE) recyclerView.visibility = View.VISIBLE
-                }.start()
-            }
+        if (progressBar.visibility != View.GONE) {
+            progressBar.animate().alpha(0f).setDuration(125).withEndAction{
+                progressBar.visibility = View.GONE
+                progressBar.alpha = 1f
+                if (recyclerView.visibility != View.VISIBLE) recyclerView.visibility = View.VISIBLE
+            }.start()
+        }
 
-            if (actualFolderFiltered.count() == 0) files = actualFolderFiltered.toMutableList()
-            else { files = actualFolderFiltered.take(loadedFiles).toMutableList()
-                files?.add(0, File(type="header"))
-                if (loadedFiles != actualFolderFiltered.count()) files?.add(File(type="footer"))
-            }
+        if (actualFolderFiltered.count() == 0) files = actualFolderFiltered.toMutableList()
+        else { files = actualFolderFiltered.take(loadedFiles).toMutableList()
+            files?.add(0, File(type="header"))
+            if (loadedFiles != actualFolderFiltered.count()) files?.add(File(type="footer"))
+        }
 
-            adapter = ItemAdapter(applicationContext, files!!, this@MainActivity)
-            recyclerView.adapter = adapter
-            if (loadedFiles == actualFolderFiltered.count() && recyclerView.computeVerticalScrollRange() > recyclerView.height) {
-                files?.add(File(type="scrollUp"))
-                adapter?.notifyDataSetChanged()
-            }
+        adapter = ItemAdapter(applicationContext, files!!, this@MainActivity)
+        recyclerView.adapter = adapter
+        if (loadedFiles == actualFolderFiltered.count() && recyclerView.computeVerticalScrollRange() > recyclerView.height) {
+            files?.add(File(type="scrollUp"))
+            adapter?.notifyDataSetChanged()
+        }
 
-            showUi()
-            if (actualFolderFiltered.count() == 0) {
-                emptyLayout.alpha = 0f
-                emptyLayout.visibility = View.VISIBLE
-                emptyLayout.animate().alpha(1f).setDuration(125).withEndAction{ emptyLayout.alpha = 1f }.start()
-            }
+        showUi()
+        if (actualFolderFiltered.count() == 0) {
+            emptyLayout.alpha = 0f
+            emptyLayout.visibility = View.VISIBLE
+            emptyLayout.animate().alpha(1f).setDuration(125).withEndAction{ emptyLayout.alpha = 1f }.start()
         }
     }
 
-    private fun updateListView() = GlobalScope.launch {
+    private fun updateListView() = CoroutineScope(Dispatchers.Main + Job()).launch {
         val actualFolderFiltered = actualFolder?.files?.filter{f-> f.originName.toLowerCase().contains(query.toLowerCase())}
         if (loadedFiles != actualFolderFiltered?.count()) {
             val tmpFiles: MutableList<File> = mutableListOf()
+
+            val displayMetrics = applicationContext.resources.displayMetrics
+            val fWidth = (displayMetrics.widthPixels - Math.round(12 * displayMetrics.density))
             for ((i, file) in actualFolderFiltered?.drop(loadedFiles)?.withIndex()!!) {
                 if (i == loadLimit) break
                 for (realFile in theSafeFolder.listFiles()) {
@@ -319,8 +331,15 @@ class MainActivity : AppCompatActivity() {
                         else file.type = "videoView"
 
                         file.path = realFile.path
-                        //file.decrypted = cryptoUtil.decrypt(realFile)
-                        //setBitmapSize(file, realFile.path)
+                        if (!file.frozen) {
+                            val ratio: Float = fWidth / file.width.toFloat()
+                            val fHeight = ratio * file.height.toFloat()
+
+                            file.height = Math.round(fHeight).toString()
+                            file.width = fWidth.toString()
+                            file.frozen = true
+                        }
+
                         loadedFiles++
                         tmpFiles.add(file)
 
@@ -336,6 +355,7 @@ class MainActivity : AppCompatActivity() {
 
     //region private methods
 
+    //TODO don't do like that, notify file after file ? may prevent blinking
     private fun showFiles(tmpFiles: MutableList<File>, limit: Int) {
         if (loadedFiles != limit)
             tmpFiles.add(File(type="footer"))
@@ -344,7 +364,7 @@ class MainActivity : AppCompatActivity() {
 
         if (files?.size != 0) files?.removeAt(files!!.lastIndex)
         files?.addAll(tmpFiles)
-        runOnUiThread{ adapter?.notifyDataSetChanged() }
+        adapter?.notifyDataSetChanged()
     }
 
     private fun createChips(originFolder : Folder) = GlobalScope.launch {
@@ -502,30 +522,6 @@ class MainActivity : AppCompatActivity() {
         }
         decryptFiles()
     }
-
-    /////////////////////////////////////////////////////////////////////////////////////////////
-    //TODO kind of useless for video it seems
-    private fun setBitmapSize(file: File, path: String) {
-        /*try {
-            //TODO TEST
-            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            val fd = applicationContext.contentResolver.openFileDescriptor(Uri.parse(path), "r")
-            BitmapFactory.decodeFileDescriptor(fd.fileDescriptor, null, options)
-            file.width = options.outWidth
-            file.height = options.outHeight
-            android.util.Log.d("BitmapFactory", "fileHeight: ${file.height} // fileWidth: ${file.width} // type: ${file.type}")
-
-            *//*val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeByteArray(file.decrypted, 0, file.decrypted!!.size, options)
-            file.width = options.outWidth
-            file.height = options.outHeight*//*
-            //android.util.Log.d("BitmapFactory", "fileHeight: ${file.height} // fileWidth: ${file.width} // type: ${file.type}")
-        }
-        catch (ex: Exception) {
-            throw Exception(ex.message)
-        }*/
-    }
-    /////////////////////////////////////////////////////////////////////////////////////////////
 
     private fun findFolder(text : CharSequence?) : Folder? {
         for (folder in actualFolder?.folders!!)

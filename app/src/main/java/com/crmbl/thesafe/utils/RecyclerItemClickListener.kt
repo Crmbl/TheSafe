@@ -41,7 +41,7 @@ class RecyclerItemClickListener(context: Context, recyclerView: RecyclerView, pr
         val isVideoView = childView?.findViewById<PlayerView>(R.id.videoView) != null
 
         if (childView != null && mListener != null && mGestureDetector.onTouchEvent(e)
-            && !isScrollUpView && !isVideoView) {
+            && !isScrollUpView /*&& !isVideoView*/) {
             mListener.onItemClick(childView, view.getChildAdapterPosition(childView))
             return true
         }

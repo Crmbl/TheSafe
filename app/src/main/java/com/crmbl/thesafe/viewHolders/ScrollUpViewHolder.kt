@@ -14,13 +14,7 @@ class ScrollUpViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
 
     fun bind(parent: RecyclerView?) {
         button.setOnClickListener {
-            val linearSmoothScroller = object : LinearSmoothScroller(parent?.context) {
-                override fun calculateSpeedPerPixel(displayMetrics: DisplayMetrics): Float {
-                    return 18f / displayMetrics.densityDpi
-                }
-            }
-            linearSmoothScroller.targetPosition = 0
-            parent?.layoutManager!!.startSmoothScroll(linearSmoothScroller)
+            parent?.layoutManager!!.scrollToPosition(0)
             parent.tag = "smoothScrolling"
         }
     }

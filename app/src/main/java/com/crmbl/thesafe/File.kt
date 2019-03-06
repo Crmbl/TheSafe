@@ -7,12 +7,14 @@ data class File(
     var originName : String = "",
     @Json(name = "UpdatedName")
     var updatedName : String = "",
+    @Json(name = "Width")
+    var width : String = "",
+    @Json(name = "Height")
+    var height : String = "",
     @Json(ignored = true)
     var type : String = "",
     @Json(ignored = true)
-    var width : Int = 0,
+    var path : String = "",
     @Json(ignored = true)
-    var height : Int = 0,
-    @Json(ignored = true)
-    var path : String = ""
+    var frozen : Boolean = false
 )
