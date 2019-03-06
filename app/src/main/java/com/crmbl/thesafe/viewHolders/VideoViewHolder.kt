@@ -7,9 +7,9 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.crmbl.thesafe.File
-import com.crmbl.thesafe.MainActivity
 import com.crmbl.thesafe.R
 import com.crmbl.thesafe.listeners.ComposableVideoListener
+import com.crmbl.thesafe.utils.CryptoUtil
 import com.crmbl.thesafe.utils.UriByteDataHelper
 import com.google.android.exoplayer2.ExoPlayerFactory
 import com.google.android.exoplayer2.Player
@@ -21,9 +21,13 @@ import com.google.android.exoplayer2.upstream.ByteArrayDataSource
 import com.google.android.exoplayer2.upstream.DataSource
 import com.google.android.exoplayer2.upstream.DataSpec
 import kotlinx.android.synthetic.main.exo_controller.view.*
+import kotlinx.coroutines.*
 import java.io.IOException
 
 
+//TODO improve behavior of controller, show on double tap like fullscreen
+//TODO remove layout_height from waiting_frame
+//TODO won't work for video : BitmapFactory.decode
 @Suppress("DEPRECATION")
 class VideoViewHolder(itemView: View/*, private val activity: MainActivity?*/): RecyclerView.ViewHolder(itemView) {
 
@@ -50,33 +54,34 @@ class VideoViewHolder(itemView: View/*, private val activity: MainActivity?*/): 
         videoView.player = player
         videoView.exo_fullscreen.setOnClickListener { v ->
             videoView.exo_pause.performClick()
-            //TODO remove the activity param, awwwwful
+            //TODO remove the activity param, awful, use interface/listener to forward event to MainActivity
             //activity?.showPopup(v!!, 0, file)
         }
 
-        //TODO improve behavior of controller, show on double tap like fullscreen
-        //TODO remove layout_height from waiting_frame
-        //TODO won't work for video : BitmapFactory.decode
         /*val scale = activity!!.resources.displayMetrics.density
         val ratio: Float = videoView.width.toFloat() / file.width.toFloat()
         val tHeight = file.height * ratio * scale
         videoView.minimumHeight = tHeight.toInt()
         itemView.findViewById<FrameLayout>(R.id.waiting_frame).minimumHeight = tHeight.toInt()
-        //videoView.minimumWidth = file.width
+        //videoView.minimumWidth = file.width*/
 
-        //android.util.Log.d("VideoHolder", "scale: $scale // ratio: $ratio // tHeight: $tHeight // fileHeight: ${file.height} // fileWidth: ${file.width}")
-        android.util.Log.d("TEST : VideoView", "Width: ${videoView.width} // Height: ${videoView.height}")
-        android.util.Log.d("TEST : File", "Width: ${file.width} // Height: ${file.height}")*/
+        var decrypted : ByteArray? = null
+        CoroutineScope(Dispatchers.Main + Job()).launch {
+            val deferred = async(Dispatchers.Default) {
+                decrypted = CryptoUtil.decrypt(java.io.File(file.path))
+            }
 
-        val byteArrayDataSource = ByteArrayDataSource(file.decrypted!!)
-        val mediaByteUri = UriByteDataHelper().getUri(file.decrypted!!)
-        val dataSpec = DataSpec(mediaByteUri)
-        try { byteArrayDataSource.open(dataSpec) } catch (e: IOException) { e.printStackTrace() }
-        val factory = object : DataSource.Factory { override fun createDataSource(): DataSource { return byteArrayDataSource } }
-        val mediaSource = ExtractorMediaSource.Factory(factory).createMediaSource(mediaByteUri)
+            deferred.await()
+            val byteArrayDataSource = ByteArrayDataSource(decrypted)
+            val mediaByteUri = UriByteDataHelper().getUri(decrypted!!)
+            val dataSpec = DataSpec(mediaByteUri)
+            try { byteArrayDataSource.open(dataSpec) } catch (e: IOException) { e.printStackTrace() }
+            val factory = object : DataSource.Factory { override fun createDataSource(): DataSource { return byteArrayDataSource } }
+            val mediaSource = ExtractorMediaSource.Factory(factory).createMediaSource(mediaByteUri)
 
-        player.prepare(mediaSource)
-        videoView.hideController()
+            player.prepare(mediaSource)
+            videoView.hideController()
+        }
     }
 
     private fun onVideoSizeChanged() {

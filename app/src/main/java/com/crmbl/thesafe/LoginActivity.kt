@@ -38,27 +38,24 @@ import javax.crypto.SecretKey
 
 class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
 
-    lateinit var prefs : Prefs
-    lateinit var binding : ActivityLoginBinding
-
-    private lateinit var loginCard : MaterialCardView
+    private lateinit var prefs : Prefs
+    private lateinit var binding : ActivityLoginBinding
     private lateinit var slideUp : Animation
     private lateinit var slideDown : Animation
     private lateinit var shake : Animation
     private lateinit var expand : Animation
     private lateinit var expandXY : Animation
     private lateinit var slideLogin : Animation
-    private lateinit var broadcastReceiver: BroadcastReceiver
 
+    private var broadcastReceiver: BroadcastReceiver? = null
     private var isOpen : Boolean = false
     private var rememberUsername : Boolean = false
+
     private var cryptoObject: FingerprintManagerCompat.CryptoObject? = null
     private var keyStore: KeyStore? = null
     private var keyGenerator: KeyGenerator? = null
     private val keyName = "safe_key"
-    private val controller: FingerprintController by lazy {
-        FingerprintController(FingerprintManagerCompat.from(applicationContext), this)
-    }
+    private var controller: FingerprintController? = null
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,8 +64,10 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
 
         broadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(arg0: Context, intent: Intent) { val action = intent.action
-                if (action == "finish_LoginActivity") finish() }}
+                if (action == "finish_LoginActivity") { finish() }
+            }}
         registerReceiver(broadcastReceiver, IntentFilter("finish_LoginActivity"))
+        controller = FingerprintController(FingerprintManagerCompat.from(applicationContext), this)
 
         //region init binding
 
@@ -91,7 +90,7 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
         val loginButtonCancelF = findViewById<MaterialButton>(R.id.login_button_cancel_fingerprint)
         val loginButtonGo = findViewById<MaterialButton>(R.id.login_button_go)
 
-        loginCard = findViewById(R.id.login_card)
+        val loginCard = findViewById<MaterialCardView>(R.id.login_card)
         slideUp = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_up)
         slideDown = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_down)
         shake = AnimationUtils.loadAnimation(applicationContext, R.anim.shake)
@@ -166,6 +165,7 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
     public override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(broadcastReceiver)
+        broadcastReceiver = null
     }
 
     override fun onResume() {
@@ -175,17 +175,17 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
 
     override fun onPause() {
         super.onPause()
-        controller.stopListening()
+        controller?.stopListening()
     }
 
     override fun onSuccess() {
         val fingerPrintIcon = findViewById<ImageView>(R.id.imageview_fingerprint)
         fingerPrintIcon.startAnimation(expandXY)
-        loginCard.startAnimation(slideLogin)
+        findViewById<MaterialCardView>(R.id.login_card).startAnimation(slideLogin)
     }
 
     override fun onError() {
-        loginCard.startAnimation(shake)
+        findViewById<MaterialCardView>(R.id.login_card).startAnimation(shake)
     }
 
     override fun onHelp() {
@@ -201,32 +201,30 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
         if (isOpen) return
 
         binding.viewModel?.isUsingFingerprint = value
-        loginCard.startAnimation(slideUp)
+        findViewById<MaterialCardView>(R.id.login_card).startAnimation(slideUp)
     }
 
     private fun hideLoginCard(value : Boolean) {
         binding.viewModel?.isUsingFingerprint = value
-        loginCard.startAnimation(slideDown)
-        controller.stopListening()
+        findViewById<MaterialCardView>(R.id.login_card).startAnimation(slideDown)
+        controller?.stopListening()
     }
 
     private fun login() {
         val username = binding.viewModel?.username
         val password = binding.viewModel?.password
-        if (username.isNullOrBlank() || password.isNullOrBlank()) { // Error handling
-            loginCard.startAnimation(shake)
-        }
+        if (username.isNullOrBlank() || password.isNullOrBlank())
+            findViewById<MaterialCardView>(R.id.login_card).startAnimation(shake)
 
-        if (prefs.usernameHash == StringUtil().md5(username!!) && prefs.passwordHash == StringUtil().md5(password!!)) {
-            loginCard.startAnimation(slideLogin)
-        }
-        else {
-            loginCard.startAnimation(shake)
-        }
+        if (prefs.usernameHash == StringUtil().md5(username!!) && prefs.passwordHash == StringUtil().md5(password!!))
+            findViewById<MaterialCardView>(R.id.login_card).startAnimation(slideLogin)
+        else
+            findViewById<MaterialCardView>(R.id.login_card).startAnimation(shake)
     }
 
     @SuppressLint("PrivateResource")
     private fun handleLogin() {
+        controller = null
         val previousActivity = intent.getStringExtra("previous")
         if (previousActivity.isNullOrBlank()) {
             val intent : Intent = if (prefs.firstLogin) {
@@ -245,7 +243,7 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
 
     private fun handleFingerprint() {
         if (!isOpen || !binding.viewModel?.isUsingFingerprint!!) return
-        cryptoObject?.let { controller.startListening(it) }
+        cryptoObject?.let { controller?.startListening(it) }
     }
 
     private fun initCipher(cipher: Cipher, keyName: String): Boolean {

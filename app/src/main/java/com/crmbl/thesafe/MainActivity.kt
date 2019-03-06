@@ -60,9 +60,7 @@ class MainActivity : AppCompatActivity() {
     private var query: String = ""
     private var imageFileExtensions: Array<String> = arrayOf("gif", "png", "jpg", "jpeg", "bmp", "pdf")
     private lateinit var cryptedMapping : java.io.File
-    private lateinit var cryptoUtil : CryptoUtil
     private lateinit var theSafeFolder : java.io.File
-    private lateinit var prefs : Prefs
 
     private lateinit var recyclerView : RecyclerView
     private lateinit var lockLayout : FrameLayout
@@ -73,7 +71,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var searchView: SearchView
     private lateinit var chipGroup : ChipGroup
     private lateinit var layoutManager : LinearLayoutManager
-    private lateinit var broadcastReceiver: BroadcastReceiver
+    private var broadcastReceiver: BroadcastReceiver? = null
 
     //region override methods
 
@@ -91,7 +89,10 @@ class MainActivity : AppCompatActivity() {
         registerReceiver(broadcastReceiver, IntentFilter("finish_MainActivity"))
         setContentView(R.layout.activity_main)
 
-        prefs = Prefs(this)
+        val prefs = Prefs(this)
+        CryptoUtil.password = prefs.passwordDecryptHash
+        CryptoUtil.salt = prefs.saltDecryptHash
+
         scrollView = findViewById(R.id.scrollView_chipgroup)
         bottomBar = findViewById(R.id.bar)
         lockLayout = findViewById(R.id.layout_lock)
@@ -170,12 +171,12 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        recyclerView.addOnItemTouchListener(RecyclerItemClickListener(this, recyclerView,
-            object: RecyclerItemClickListener.OnItemClickListener{
-                override fun onLongItemClick(view: View?, position: Int) {}
-                override fun onItemClick(view: View, position: Int) { showPopup(view, position) }
-            })
-        )
+//        recyclerView.addOnItemTouchListener(RecyclerItemClickListener(this, recyclerView,
+//            object: RecyclerItemClickListener.OnItemClickListener{
+//                override fun onLongItemClick(view: View?, position: Int) {}
+//                override fun onItemClick(view: View, position: Int) { showPopup(view, position) }
+//            })
+//        )
 
         goSettings.setOnClickListener {this.goSettings()}
 
@@ -213,6 +214,7 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         if (!popupDismissed) fullScreen!!.dismiss()
         unregisterReceiver(broadcastReceiver)
+        broadcastReceiver = null
     }
 
     override fun onPause() {
@@ -242,13 +244,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun decryptMappingFile() = GlobalScope.launch {
         try{
-            cryptoUtil = CryptoUtil(prefs.passwordDecryptHash, prefs.saltDecryptHash)
             for (file in theSafeFolder.listFiles()) {
-                if (cryptoUtil.decipher(file.name) == "mapping.json")
+                if (CryptoUtil.decipher(file.name) == "mapping.json")
                     cryptedMapping = file
             }
 
-            mapping = Klaxon().parse<Folder>(cryptoUtil.decrypt(cryptedMapping)!!.inputStream())
+            mapping = Klaxon().parse<Folder>(CryptoUtil.decrypt(cryptedMapping)!!.inputStream())
             setParent(mapping!!)
             actualFolder = mapping!!
             decryptFiles()
@@ -263,14 +264,13 @@ class MainActivity : AppCompatActivity() {
         for ((i, file) in actualFolderFiltered?.withIndex()!!) {
             if (i == loadLimit) break
             for (realFile in theSafeFolder.listFiles()) {
-                if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
-                    if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase()))
-                        file.type = "imageView"
-                    else
-                        file.type = "videoView"
+                if (file.updatedName == CryptoUtil.decipher(realFile.name.split('/').last())) {
+                    if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase())) file.type = "imageView"
+                    else file.type = "videoView"
 
-                    file.decrypted = cryptoUtil.decrypt(realFile)
-                    setBitmapSize(file, realFile.path)
+                    file.path = realFile.path
+                    //file.decrypted = cryptoUtil.decrypt(realFile)
+                    //setBitmapSize(file, realFile.path)
                     loadedFiles++
                 }
             }
@@ -287,14 +287,14 @@ class MainActivity : AppCompatActivity() {
 
             if (actualFolderFiltered.count() == 0) files = actualFolderFiltered.toMutableList()
             else { files = actualFolderFiltered.take(loadedFiles).toMutableList()
-                files?.add(0, File("", "", null, "header"))
-                if (loadedFiles != actualFolderFiltered.count()) files?.add(File("", "", null, "footer"))
+                files?.add(0, File(type="header"))
+                if (loadedFiles != actualFolderFiltered.count()) files?.add(File(type="footer"))
             }
 
             adapter = ItemAdapter(applicationContext, files!!, this@MainActivity)
             recyclerView.adapter = adapter
             if (loadedFiles == actualFolderFiltered.count() && recyclerView.computeVerticalScrollRange() > recyclerView.height) {
-                files?.add(File("", "", null, "scrollUp"))
+                files?.add(File(type="scrollUp"))
                 adapter?.notifyDataSetChanged()
             }
 
@@ -314,19 +314,18 @@ class MainActivity : AppCompatActivity() {
             for ((i, file) in actualFolderFiltered?.drop(loadedFiles)?.withIndex()!!) {
                 if (i == loadLimit) break
                 for (realFile in theSafeFolder.listFiles()) {
-                    if (file.updatedName == cryptoUtil.decipher(realFile.name.split('/').last())) {
-                        if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase()))
-                            file.type = "imageView"
-                        else
-                            file.type = "videoView"
+                    if (file.updatedName == CryptoUtil.decipher(realFile.name.split('/').last())) {
+                        if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase())) file.type = "imageView"
+                        else file.type = "videoView"
 
-                        file.decrypted = cryptoUtil.decrypt(realFile)
-                        setBitmapSize(file, realFile.path)
+                        file.path = realFile.path
+                        //file.decrypted = cryptoUtil.decrypt(realFile)
+                        //setBitmapSize(file, realFile.path)
                         loadedFiles++
                         tmpFiles.add(file)
 
                         if (i == loadLimit -1 || file == actualFolderFiltered.last())
-                            showFiles(tmpFiles, actualFolderFiltered)
+                            showFiles(tmpFiles, actualFolderFiltered.count())
                     }
                 }
             }
@@ -337,12 +336,11 @@ class MainActivity : AppCompatActivity() {
 
     //region private methods
 
-    private fun showFiles(tmpFiles: MutableList<File>, actualFolderFiltered: List<File>) {
-        if (loadedFiles != actualFolderFiltered.count())
-            tmpFiles.add(File("", "", null, "footer"))
-        else if (loadedFiles == actualFolderFiltered.count()
-            && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount)
-            tmpFiles.add(File("", "", null, "scrollUp"))
+    private fun showFiles(tmpFiles: MutableList<File>, limit: Int) {
+        if (loadedFiles != limit)
+            tmpFiles.add(File(type="footer"))
+        else if (loadedFiles == limit && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount)
+            tmpFiles.add(File(type="scrollUp"))
 
         if (files?.size != 0) files?.removeAt(files!!.lastIndex)
         files?.addAll(tmpFiles)
@@ -564,7 +562,7 @@ class MainActivity : AppCompatActivity() {
     //endregion private methods
 
     fun showPopup(view: View, position: Int, _file: File? = null) {
-        val file : File = _file ?: files!![position]
+        /*val file : File = _file ?: files!![position]
         if (file.type != "imageView" && file.type != "videoView") return
 
         popupDismissed = false
@@ -609,6 +607,6 @@ class MainActivity : AppCompatActivity() {
                 }
                 return false
             }
-        })
+        })*/
     }
 }

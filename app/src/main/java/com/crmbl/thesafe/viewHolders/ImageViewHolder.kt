@@ -8,8 +8,11 @@ import androidx.recyclerview.widget.RecyclerView
 import com.crmbl.thesafe.File
 import com.crmbl.thesafe.MainActivity
 import com.crmbl.thesafe.R
+import com.crmbl.thesafe.utils.CryptoUtil
+import kotlinx.coroutines.*
 import pl.droidsonroids.gif.GifDrawable
 import pl.droidsonroids.gif.GifImageView
+import java.io.ByteArrayInputStream
 
 class ImageViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
 
@@ -18,14 +21,24 @@ class ImageViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
         itemView.findViewById<TextView>(R.id.textview_title).text = splitedName.first()
         itemView.findViewById<TextView>(R.id.textview_ext).text = splitedName.last()
 
-        when {
-            splitedName.last().toLowerCase() == "gif" -> {
-                itemView.findViewById<GifImageView>(R.id.imageView).setImageDrawable(
-                    GifDrawable(file.decrypted!!.inputStream()))
+        var decryptedStream : ByteArrayInputStream? = null
+        CoroutineScope(Dispatchers.Main + Job()).launch {
+            val deferred = async(Dispatchers.Default) {
+                decryptedStream = CryptoUtil.decrypt(java.io.File(file.path))!!.inputStream()
             }
-            else -> {
-                itemView.findViewById<GifImageView>(R.id.imageView).setImageDrawable(
-                    BitmapDrawable(Resources.getSystem(), file.decrypted!!.inputStream()))
+
+            deferred.await()
+            when {
+                splitedName.last().toLowerCase() == "gif" -> {
+                    itemView.findViewById<GifImageView>(R.id.imageView).setImageDrawable(
+                        GifDrawable(decryptedStream!!)
+                    )
+                }
+                else -> {
+                    itemView.findViewById<GifImageView>(R.id.imageView).setImageDrawable(
+                        BitmapDrawable(Resources.getSystem(), decryptedStream!!)
+                    )
+                }
             }
         }
     }

@@ -35,12 +35,14 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
             }
             imageView -> {
                 val view: View = LayoutInflater.from(parent.context).inflate(R.layout.image_item, parent, false)
-                view.clipToOutline = true
+                    .apply { clipToOutline = true }
+
                 return ImageViewHolder(view)
             }
             videoView -> {
                 val view: View = LayoutInflater.from(parent.context).inflate(R.layout.video_item, parent, false)
-                view.clipToOutline = true
+                    .apply { clipToOutline = true }
+
                 return VideoViewHolder(view/*, activity*/)
             }
             footerView -> {

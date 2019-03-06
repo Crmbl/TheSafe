@@ -39,9 +39,9 @@ class SettingActivity : AppCompatActivity() {
     private var goMain : Boolean = false
     private var validated : Boolean = false
 
+    private var broadcastReceiver: BroadcastReceiver? = null
     private lateinit var lockLayout : FrameLayout
     private lateinit var expand : Animation
-    private lateinit var broadcastReceiver: BroadcastReceiver
     private lateinit var binding : ActivitySettingBinding
     private lateinit var prefs : Prefs
     private lateinit var passField : TextInputLayout
@@ -56,7 +56,8 @@ class SettingActivity : AppCompatActivity() {
 
         broadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(arg0: Context, intent: Intent) { val action = intent.action
-                if (action == "finish_SettingActivity") finish() }}
+                if (action == "finish_SettingActivity") { finish() }
+            }}
         registerReceiver(broadcastReceiver, IntentFilter("finish_SettingActivity"))
 
         this.title = resources.getString(R.string.setting_field_title)
@@ -154,11 +155,12 @@ class SettingActivity : AppCompatActivity() {
             return
         }
         else {
-            val cryptoUtil = CryptoUtil(viewModel.settingPassword, viewModel.settingSalt)
+            CryptoUtil.password = viewModel.settingPassword
+            CryptoUtil.salt = viewModel.settingSalt
             var fileToTest : File? = null
             var fileExt = ""
             for (file in theSafeFolder.listFiles()) {
-                fileExt = cryptoUtil.decipher(file.name).split('.')[1]
+                fileExt = CryptoUtil.decipher(file.name).split('.')[1]
                 if (fileExt == "jpg" || fileExt == "gif" || fileExt == "png") {
                     fileToTest = file
                     break
@@ -171,7 +173,7 @@ class SettingActivity : AppCompatActivity() {
                 textViewError.startAnimation(expand)
                 return
             } else {
-                val output = cryptoUtil.decrypt(fileToTest)
+                val output = CryptoUtil.decrypt(fileToTest)
                 val testFile = File(theSafeFolder, "/testing.$fileExt")
                 testFile.writeBytes(output!!)
 
@@ -238,6 +240,7 @@ class SettingActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(broadcastReceiver)
+        broadcastReceiver = null
     }
 
     override fun onPause() {
