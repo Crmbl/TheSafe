@@ -72,7 +72,7 @@ class ImageViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
             (mediaView.drawable as GifDrawable).start()
     }
 
-    fun recycleView(activity: MainActivity) {
+    fun recycleView() {
         val mediaView = itemView.findViewById<GifImageView>(R.id.imageView)
         if (mediaView.drawable == null) return
 
@@ -82,6 +82,6 @@ class ImageViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
         if (mediaViewDrawable is BitmapDrawable)
             mediaViewDrawable.bitmap.recycle()
 
-        activity.runOnUiThread { mediaView.setImageDrawable(null) }
+        mediaView.setImageDrawable(null)
     }
 }

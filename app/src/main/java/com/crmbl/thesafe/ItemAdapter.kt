@@ -10,7 +10,11 @@ import androidx.recyclerview.widget.RecyclerView
 import com.crmbl.thesafe.viewHolders.*
 
 
-class ItemAdapter(private val context: Context, private val dataSource : MutableList<File>, private val activity: MainActivity?) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class ItemAdapter(
+    private val context: Context,
+    private val dataSource : MutableList<File>,/*, private val activity: MainActivity?*/
+    private val videoListener: VideoViewHolder.VideoViewHolderListener
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val headerView = 0
     private val imageView = 1
@@ -43,7 +47,7 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
                 val view: View = LayoutInflater.from(parent.context).inflate(R.layout.video_item, parent, false)
                     .apply { clipToOutline = true }
 
-                return VideoViewHolder(view/*, activity*/)
+                return VideoViewHolder(view, videoListener)
             }
             footerView -> {
                 val view: View = LayoutInflater.from(parent.context).inflate(R.layout.footer_item, parent, false)
@@ -122,7 +126,7 @@ class ItemAdapter(private val context: Context, private val dataSource : Mutable
         if (holder is VideoViewHolder)
             holder.recycleView()
         if (holder is ImageViewHolder)
-            holder.recycleView(activity!!)
+            holder.recycleView()
 
         super.onViewRecycled(holder)
     }

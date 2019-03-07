@@ -29,6 +29,7 @@ import com.crmbl.thesafe.utils.CryptoUtil
 import com.crmbl.thesafe.utils.RecyclerItemClickListener
 import com.crmbl.thesafe.viewHolders.ImageViewHolder
 import com.crmbl.thesafe.viewHolders.VideoViewHolder
+import com.crmbl.thesafe.viewHolders.VideoViewHolder.VideoViewHolderListener
 import com.github.ybq.android.spinkit.style.CubeGrid
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
@@ -66,6 +67,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var chipGroup : ChipGroup
     private lateinit var layoutManager : LinearLayoutManager
     private var broadcastReceiver: BroadcastReceiver? = null
+
+    private var videoListener: VideoViewHolderListener? = null
 
     //region override methods
 
@@ -165,6 +168,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+        //TODO delete/remove this Listener
         recyclerView.addOnItemTouchListener(RecyclerItemClickListener(this, recyclerView,
             object: RecyclerItemClickListener.OnItemClickListener{
                 override fun onLongItemClick(view: View?, position: Int) {}
@@ -175,6 +179,14 @@ class MainActivity : AppCompatActivity() {
         )
 
         goSettings.setOnClickListener {this.goSettings()}
+
+        //TODO not working
+        videoListener = object : VideoViewHolderListener {
+            override fun onFullScreenButtonClick(item: File) {
+                Toast.makeText(applicationContext, "ANUS DILATUS", Toast.LENGTH_SHORT).show()
+                //showPopup(view, position)
+            }
+        }
 
         //endregion listeners
 
@@ -290,7 +302,6 @@ class MainActivity : AppCompatActivity() {
         if (progressBar.visibility != View.GONE) {
             progressBar.animate().alpha(0f).setDuration(125).withEndAction{
                 progressBar.visibility = View.GONE
-                progressBar.alpha = 1f
                 if (recyclerView.visibility != View.VISIBLE) recyclerView.visibility = View.VISIBLE
             }.start()
         }
@@ -301,7 +312,7 @@ class MainActivity : AppCompatActivity() {
             if (loadedFiles != actualFolderFiltered.count()) files?.add(File(type="footer"))
         }
 
-        adapter = ItemAdapter(applicationContext, files!!, this@MainActivity)
+        adapter = ItemAdapter(applicationContext, files!!, videoListener!!)
         recyclerView.adapter = adapter
         if (loadedFiles == actualFolderFiltered.count() && recyclerView.computeVerticalScrollRange() > recyclerView.height) {
             files?.add(File(type="scrollUp"))
@@ -319,8 +330,6 @@ class MainActivity : AppCompatActivity() {
     private fun updateListView() = CoroutineScope(Dispatchers.Main + Job()).launch {
         val actualFolderFiltered = actualFolder?.files?.filter{f-> f.originName.toLowerCase().contains(query.toLowerCase())}
         if (loadedFiles != actualFolderFiltered?.count()) {
-            val tmpFiles: MutableList<File> = mutableListOf()
-
             val displayMetrics = applicationContext.resources.displayMetrics
             val fWidth = (displayMetrics.widthPixels - Math.round(12 * displayMetrics.density))
             for ((i, file) in actualFolderFiltered?.drop(loadedFiles)?.withIndex()!!) {
@@ -341,13 +350,21 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         loadedFiles++
-                        tmpFiles.add(file)
+                        if (files!!.size != 0 && files!!.last().type == "footer") {
+                            files!!.removeAt(files!!.lastIndex)
+                            adapter?.notifyItemRemoved(loadedFiles)
+                        }
 
-                        if (i == loadLimit -1 || file == actualFolderFiltered.last())
-                            showFiles(tmpFiles, actualFolderFiltered.count())
+                        files!!.add(file)
+                        adapter?.notifyItemInserted(loadedFiles)
                     }
                 }
             }
+            if (loadedFiles != actualFolderFiltered.count())
+                files!!.add(File(type="footer"))
+            else if (loadedFiles == actualFolderFiltered.count() && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount)
+                files!!.add(File(type="scrollUp"))
+            adapter?.notifyItemInserted(loadedFiles +1)
         }
     }
 
@@ -355,60 +372,46 @@ class MainActivity : AppCompatActivity() {
 
     //region private methods
 
-    //TODO don't do like that, notify file after file ? may prevent blinking
-    private fun showFiles(tmpFiles: MutableList<File>, limit: Int) {
-        if (loadedFiles != limit)
-            tmpFiles.add(File(type="footer"))
-        else if (loadedFiles == limit && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount)
-            tmpFiles.add(File(type="scrollUp"))
-
-        if (files?.size != 0) files?.removeAt(files!!.lastIndex)
-        files?.addAll(tmpFiles)
-        adapter?.notifyDataSetChanged()
-    }
-
-    private fun createChips(originFolder : Folder) = GlobalScope.launch {
-        runOnUiThread {
-            var index = 0
-            if (originFolder != mapping) {
-                val chip = Chip(chipGroup.context)
-                chip.id = originFolder.folders.count()
-                chip.chipIcon = resources.getDrawable(R.drawable.ic_chevron_left_white_24dp, theme)
-                chip.setChipBackgroundColorResource(R.color.colorAccent)
-                chip.maxWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
-                chip.chipStartPadding = 0f
-                chip.iconStartPadding = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 7f, resources.displayMetrics)
-                chip.isCloseIconVisible = false
-                chip.isClickable = true
-                chip.isCheckable = false
-                chip.isCheckedIconVisible = false
-                chip.elevation = 5f
-                chip.alpha = 0f
-                chip.setOnClickListener { goBack() }
-                chipGroup.addView(chip)
-                val fadeIn = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_in_no_delay)
-                fadeIn.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view:View? -> view?.alpha = 1f }))
-                chip.startAnimation(fadeIn)
-                index++
-            }
-            for ((i, folder) in originFolder.folders.withIndex()) {
-                val chip = Chip(chipGroup.context)
-                chip.id = i
-                chip.setChipBackgroundColorResource(R.color.colorHintAccent)
-                chip.setTextColor(resources.getColor(R.color.colorBackground, theme))
-                chip.text = folder.name
-                chip.isClickable = true
-                chip.isCheckable = false
-                chip.isCheckedIconVisible = false
-                chip.elevation = 5f
-                chip.setOnClickListener { v -> goForward(v as Chip) }
-                chip.alpha = 0f
-                chipGroup.addView(chip)
-                val fadeIn = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_in_no_delay)
-                fadeIn.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view:View? -> view?.alpha = 1f }))
-                chip.postDelayed({ chip.startAnimation(fadeIn) }, index * 50L)
-                index++
-            }
+    private fun createChips(originFolder : Folder) = CoroutineScope(Dispatchers.Main + Job()).launch {
+        var index = 0
+        if (originFolder != mapping) {
+            val chip = Chip(chipGroup.context)
+            chip.id = originFolder.folders.count()
+            chip.chipIcon = resources.getDrawable(R.drawable.ic_chevron_left_white_24dp, theme)
+            chip.setChipBackgroundColorResource(R.color.colorAccent)
+            chip.maxWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
+            chip.chipStartPadding = 0f
+            chip.iconStartPadding = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 7f, resources.displayMetrics)
+            chip.isCloseIconVisible = false
+            chip.isClickable = true
+            chip.isCheckable = false
+            chip.isCheckedIconVisible = false
+            chip.elevation = 5f
+            chip.alpha = 0f
+            chip.setOnClickListener { goBack() }
+            chipGroup.addView(chip)
+            val fadeIn = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_in_no_delay)
+            fadeIn.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view:View? -> view?.alpha = 1f }))
+            chip.startAnimation(fadeIn)
+            index++
+        }
+        for ((i, folder) in originFolder.folders.withIndex()) {
+            val chip = Chip(chipGroup.context)
+            chip.id = i
+            chip.setChipBackgroundColorResource(R.color.colorHintAccent)
+            chip.setTextColor(resources.getColor(R.color.colorBackground, theme))
+            chip.text = folder.name
+            chip.isClickable = true
+            chip.isCheckable = false
+            chip.isCheckedIconVisible = false
+            chip.elevation = 5f
+            chip.setOnClickListener { v -> goForward(v as Chip) }
+            chip.alpha = 0f
+            chipGroup.addView(chip)
+            val fadeIn = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_in_no_delay)
+            fadeIn.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view:View? -> view?.alpha = 1f }))
+            chip.postDelayed({ chip.startAnimation(fadeIn) }, index * 50L)
+            index++
         }
     }
 
@@ -488,39 +491,31 @@ class MainActivity : AppCompatActivity() {
         navigate(null)
     }
 
-    private fun navigate(direction : Boolean?) {
+    private fun navigate(direction : Boolean?) = CoroutineScope(Dispatchers.Main + Job()).launch {
         emptyLayout.animate().alpha(0f).setDuration(125).withEndAction{
-            emptyLayout.visibility = View.INVISIBLE; emptyLayout.alpha = 1f }.start()
-        recyclerView.animate().alpha(0f).setDuration(125).withEndAction{
-            recyclerView.visibility = View.INVISIBLE
-            recyclerView.alpha = 1f
+            emptyLayout.visibility = View.INVISIBLE; emptyLayout.alpha = 1f
         }.start()
+        recyclerView.animate().alpha(0f).setDuration(125).withEndAction{
+            recyclerView.visibility = View.INVISIBLE; recyclerView.alpha = 1f
+        }.start()
+        progressBar.animate().alpha(1f).setDuration(125)
+            .withStartAction{
+                progressBar.visibility = View.VISIBLE
+            }.withEndAction{
+                chipGroup.removeAllViews()
+                if (direction != null) {
+                    actualFolder = if (direction) findFolder(clickedChip?.text)!!
+                    else actualFolder?.parent?.copy()
+                }
 
-        progressBar.alpha = 0f
-        progressBar.visibility = View.VISIBLE
-        progressBar.animate().alpha(1f).setDuration(125).withEndAction{ progressBar.alpha = 1f }.setStartDelay(125).start()
-
-        chipGroup.removeAllViews()
-        if (direction != null) {
-            actualFolder = if (direction) findFolder(clickedChip?.text)!!
-                            else actualFolder?.parent?.copy()
-        }
-
-        loadedFiles = 0
-        recycleViews()
-    }
-
-    private fun recycleViews() = GlobalScope.launch {
-        runOnUiThread {
-            for (i in 0 until recyclerView.childCount) {
-                val holder = recyclerView.getChildViewHolder(recyclerView.getChildAt(i))
-                if (holder is VideoViewHolder)
-                    holder.recycleView()
-                if (holder is ImageViewHolder)
-                    holder.recycleView(this@MainActivity)
-            }
-        }
-        decryptFiles()
+                loadedFiles = 0
+                for (i in 0 until recyclerView.childCount) {
+                    val holder = recyclerView.getChildViewHolder(recyclerView.getChildAt(i))
+                    if (holder is VideoViewHolder) holder.recycleView()
+                    if (holder is ImageViewHolder) holder.recycleView()
+                }
+                decryptFiles()
+        }.start()
     }
 
     private fun findFolder(text : CharSequence?) : Folder? {

@@ -1,5 +1,7 @@
 package com.crmbl.thesafe.viewHolders
 
+import android.content.Context
+import android.view.GestureDetector
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -8,6 +10,8 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.crmbl.thesafe.File
 import com.crmbl.thesafe.R
+import com.crmbl.thesafe.listeners.ComposableGestureListener
+import com.crmbl.thesafe.listeners.ComposableTouchListener
 import com.crmbl.thesafe.listeners.ComposableVideoListener
 import com.crmbl.thesafe.utils.CryptoUtil
 import com.crmbl.thesafe.utils.UriByteDataHelper
@@ -27,11 +31,18 @@ import java.io.IOException
 
 //TODO improve behavior of controller, show on double tap like fullscreen
 @Suppress("DEPRECATION")
-class VideoViewHolder(itemView: View/*, private val activity: MainActivity?*/): RecyclerView.ViewHolder(itemView) {
+class VideoViewHolder(itemView: View, listener: VideoViewHolderListener): RecyclerView.ViewHolder(itemView) {
 
+    interface VideoViewHolderListener {
+        fun onFullScreenButtonClick(item: File)
+    }
+
+    private var videoListener: VideoViewHolderListener = listener
     private var isRecycling: Boolean = false
 
     fun bind(file : File, mRecyclerView: RecyclerView?) {
+        //region init vars
+
         val splitedName = file.originName.split('.')
         itemView.findViewById<TextView>(R.id.textview_title).text = splitedName.first()
         itemView.findViewById<TextView>(R.id.textview_ext).text = splitedName.last()
@@ -47,19 +58,35 @@ class VideoViewHolder(itemView: View/*, private val activity: MainActivity?*/): 
 
         val videoView = itemView.findViewById<PlayerView>(R.id.videoView)
         val player: SimpleExoPlayer = ExoPlayerFactory.newSimpleInstance(mRecyclerView?.context, DefaultTrackSelector())
-        player.addVideoListener(ComposableVideoListener().onVideoSizeChanged { _, _, _, _ -> onVideoSizeChanged() })
         player.playWhenReady = false
         player.volume = 0f
         player.repeatMode = Player.REPEAT_MODE_ALL
 
         videoView.player = player
         videoView.controllerAutoShow = false
+        videoView.controllerHideOnTouch = false
         videoView.hideController()
-        videoView.exo_fullscreen.setOnClickListener { v ->
+
+        //endregion init vars
+
+        //region init listeners
+
+        //TODO none of this work, total bullshit
+        player.addVideoListener(ComposableVideoListener().onVideoSizeChanged { _, _, _, _ -> onVideoSizeChanged() })
+        videoView.exo_fullscreen.setOnClickListener {
             videoView.exo_pause.performClick()
-            //TODO remove the activity param, awful, use interface/listener to forward event to MainActivity
-            //activity?.showPopup(v!!, 0, file)
+            videoListener.onFullScreenButtonClick(file)
         }
+        val gestureDetector = GestureDetector(mRecyclerView?.context, ComposableGestureListener().onDoubleTap {
+            toggleController(); true
+        }.onSingleTapUp { false })
+        videoView.setOnTouchListener(ComposableTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+        })
+
+        //endregion init listeners
+
+        //region init player
 
         var decrypted : ByteArray? = null
         CoroutineScope(Dispatchers.Main + Job()).launch {
@@ -78,6 +105,14 @@ class VideoViewHolder(itemView: View/*, private val activity: MainActivity?*/): 
             val view = itemView.findViewById<PlayerView>(R.id.videoView)
             (view.player as SimpleExoPlayer).prepare(mediaSource)
         }
+
+        //endregion init player
+    }
+
+    private fun toggleController() {
+        val videoView = itemView.findViewById<PlayerView>(R.id.videoView)
+        if (videoView.exo_fullscreen.visibility == View.VISIBLE) videoView.hideController()
+        else videoView.showController()
     }
 
     private fun onVideoSizeChanged() {
