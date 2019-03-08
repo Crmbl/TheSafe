@@ -12,8 +12,10 @@ import com.crmbl.thesafe.viewHolders.*
 
 class ItemAdapter(
     private val context: Context,
-    private val dataSource : MutableList<File>,/*, private val activity: MainActivity?*/
-    private val videoListener: VideoViewHolder.VideoViewHolderListener
+    private val dataSource : MutableList<File>,
+    private val videoListener: VideoViewHolder.VideoViewHolderListener,
+    private val imageListener: ImageViewHolder.ImageViewHolderListener,
+    private val scrollUpListener: ScrollUpViewHolder.ScrollUpViewHolderListener
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val headerView = 0
@@ -22,14 +24,8 @@ class ItemAdapter(
     private val footerView = 3
     private val scrollUpView = 4
     private var lastPosition = -1
-    private var mRecyclerView: RecyclerView? = null
 
     //region override methods
-
-    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
-        mRecyclerView = recyclerView
-        super.onAttachedToRecyclerView(recyclerView)
-    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         when (viewType) {
@@ -41,7 +37,7 @@ class ItemAdapter(
                 val view: View = LayoutInflater.from(parent.context).inflate(R.layout.image_item, parent, false)
                     .apply { clipToOutline = true }
 
-                return ImageViewHolder(view)
+                return ImageViewHolder(view, imageListener)
             }
             videoView -> {
                 val view: View = LayoutInflater.from(parent.context).inflate(R.layout.video_item, parent, false)
@@ -55,7 +51,7 @@ class ItemAdapter(
             }
             scrollUpView -> {
                 val view: View = LayoutInflater.from(parent.context).inflate(R.layout.scrollup_item, parent, false)
-                return ScrollUpViewHolder(view)
+                return ScrollUpViewHolder(view, scrollUpListener)
             }
         }
 
@@ -90,14 +86,14 @@ class ItemAdapter(
             }
             is VideoViewHolder -> {
                 val file : File = dataSource[position]
-                holder.bind(file, mRecyclerView)
+                holder.bind(file)
                 setAnimation(holder.itemView, position)
             }
             is FooterViewHolder -> {
                 setAnimation(holder.itemView, position)
             }
             is ScrollUpViewHolder -> {
-                holder.bind(mRecyclerView)
+                holder.bind()
                 setAnimation(holder.itemView, position)
             }
             is HeaderViewHolder -> {}
@@ -126,6 +122,8 @@ class ItemAdapter(
         if (holder is VideoViewHolder)
             holder.recycleView()
         if (holder is ImageViewHolder)
+            holder.recycleView()
+        if (holder is ScrollUpViewHolder)
             holder.recycleView()
 
         super.onViewRecycled(holder)

@@ -14,50 +14,42 @@ import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.upstream.ByteArrayDataSource
 import com.google.android.exoplayer2.upstream.DataSpec
 import java.io.IOException
-import com.google.android.exoplayer2.ui.PlayerView
 import android.os.Handler
 import com.crmbl.thesafe.listeners.*
 import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.ui.DefaultTimeBar
 import android.animation.ObjectAnimator
+import com.crmbl.thesafe.utils.CryptoUtil
+import com.google.android.exoplayer2.ui.TimeBar
+import com.google.android.exoplayer2.upstream.DataSource
+import kotlinx.android.synthetic.main.video_fullscreen.view.*
+import kotlinx.coroutines.*
 
 
+@Suppress("DEPRECATION")
 @SuppressLint("ClickableViewAccessibility", "InflateParams")
-class FullScreenVideo(mContext: Context, v: View, imageBytes: ByteArray) :
+class FullScreenVideo(mContext: Context, v: View, file: File) :
     PopupWindow((mContext.getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater).inflate(
         R.layout.video_fullscreen, null), ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT) {
 
     internal var view: View = contentView
-    private var frame: RelativeLayout
-    private var lockLayout: FrameLayout
-    private var progressBar: DefaultTimeBar
-    private var controllerLayout: RelativeLayout
-    private var closeButton: ImageButton
-    private var pauseButton: ImageButton
-    private var playButton: ImageButton
-    private var minimizeButton: ImageButton
-    private var muteButton: ImageButton
-    private var rotateButton: ImageButton
-    private var volumeButton: ImageButton
-    private var loading: ProgressBar
-    private var frameGestureDetector: GestureDetector
-    private var gestureDetector: GestureDetector
-    private var scaleGestureDetector: ScaleGestureDetector
-    private var player: SimpleExoPlayer? = null
+    private var gestureDetector: GestureDetector? = null
+    private var scaleGestureDetector: ScaleGestureDetector? = null
     private var timeoutHandler: Handler? = null
     private var interactionTimeoutRunnable: Runnable? = null
     private var updateHandler: Handler? = null
     private var updateProgressAction: Runnable? = null
+    private var progressListener: TimeBar.OnScrubListener? = null
+    private var listener: Player.EventListener? = null
+
     private var limitFactor: Float = 1f
-    private var isRotating: Boolean = false
     private var scaleFactor: Float = 1f
     private var mLastTouchX: Float = 0f
     private var mLastTouchY: Float = 0f
     private var mActivePointerId: Int = 0
-    private var videoView: PlayerView
     private var videoX: Float? = null
     private var videoY: Float? = null
     private var isLandscape: Boolean = false
+    private var isRotating: Boolean = false
     var isScaling: Boolean = false
 
     init {
@@ -68,30 +60,17 @@ class FullScreenVideo(mContext: Context, v: View, imageBytes: ByteArray) :
         isFocusable = true
         elevation = 5.0f
 
-        frame = view.findViewById(R.id.rl_custom_layout)
-        closeButton = this.view.findViewById(R.id.controller_close)
-        rotateButton = this.view.findViewById(R.id.controller_rotate)
-        pauseButton = this.view.findViewById(R.id.controller_pause)
-        playButton = this.view.findViewById(R.id.controller_play)
-        minimizeButton = this.view.findViewById(R.id.controller_minimize)
-        muteButton = this.view.findViewById(R.id.controller_mute)
-        volumeButton = this.view.findViewById(R.id.controller_volume)
-        lockLayout = this.view.findViewById(R.id.layout_lock)
-        controllerLayout = this.view.findViewById(R.id.controller_layout)
-        progressBar = this.view.findViewById(R.id.controller_progress)
-        videoView = this.view.findViewById(R.id.video)
-        loading = this.view.findViewById(R.id.loading)
-        loading.isIndeterminate = true
-        loading.visibility = View.VISIBLE
+        view.loading.isIndeterminate = true
+        view.loading.visibility = View.VISIBLE
 
-        player = ExoPlayerFactory.newSimpleInstance(mContext, DefaultTrackSelector())
+        val player = ExoPlayerFactory.newSimpleInstance(mContext, DefaultTrackSelector())
         player?.volume = 1f
         player?.playWhenReady = true
-        videoView.player = player
-        videoView.hideController()
+        view.video.player = player
+        view.video.hideController()
 
         timeoutHandler = Handler()
-        interactionTimeoutRunnable = Runnable { if (player?.playWhenReady!!) controllerLayout.visibility = View.INVISIBLE }
+        interactionTimeoutRunnable = Runnable { if (player?.playWhenReady!!) view.controller_layout.visibility = View.INVISIBLE }
         resetHandler(true)
         updateHandler = Handler()
         updateProgressAction = Runnable { updateProgressBar() }
@@ -100,40 +79,45 @@ class FullScreenVideo(mContext: Context, v: View, imageBytes: ByteArray) :
 
         //region init listeners
 
-        frameGestureDetector = GestureDetector(mContext, ComposableGestureListener().onDoubleTap { toggleController() })
         gestureDetector = GestureDetector(mContext, ComposableGestureListener().onDoubleTap { toggleController() })
         scaleGestureDetector = ScaleGestureDetector(mContext, ComposableScaleGestureListener().onScale { detector -> scaleVideo(detector) })
+        progressListener = ComposableTimeBarScrubListener(onStop = { _, position, _ -> seekVideo(position) })
+        listener = ComposablePlayerEventListener().onPlayerStateChanged { _, _ -> updateProgressBar() }
 
-        player?.addListener(ComposablePlayerEventListener().onPlayerStateChanged { _, _ -> updateProgressBar() })
+        player?.addListener(listener)
         player?.addVideoListener(ComposableVideoListener().onRenderedFirstFrame { onFirstFrame() })
-        frame.setOnTouchListener(ComposableTouchListener { _, event -> onTouchFrame(event!!) })
-        closeButton.setOnClickListener { dismiss() }
-        minimizeButton.setOnClickListener { dismiss() }
-        muteButton.setOnClickListener { muteVideo() }
-        volumeButton.setOnClickListener { unMuteVideo() }
-        pauseButton.setOnClickListener { pauseVideo() }
-        playButton.setOnClickListener { playVideo() }
-        rotateButton.setOnClickListener { rotateVideo() }
-        progressBar.addListener(ComposableTimeBarScrubListener(onStop = { _, position, _ -> seekVideo(position) }))
-        videoView.viewTreeObserver.addOnDrawListener { onDraw() }
-        videoView.setOnTouchListener(ComposableTouchListener { _, event -> onTouchVideo(event!!) })
+        view.controller_close.setOnClickListener { dismiss() }
+        view.controller_minimize.setOnClickListener { dismiss() }
+        view.controller_mute.setOnClickListener { muteVideo() }
+        view.controller_volume.setOnClickListener { unMuteVideo() }
+        view.controller_pause.setOnClickListener { pauseVideo() }
+        view.controller_play.setOnClickListener { playVideo() }
+        view.controller_rotate.setOnClickListener { rotateVideo() }
+        view.controller_progress.addListener(progressListener)
+        view.rl_custom_layout.setOnTouchListener(ComposableTouchListener { _, event -> onTouchFrame(event!!) })
+        view.video.setOnTouchListener(ComposableTouchListener { _, event -> onTouchVideo(event!!) })
+        view.video.viewTreeObserver.addOnDrawListener { onDraw() }
 
         //endregion init listeners
 
         //region init video
 
-        val byteArrayDataSource = ByteArrayDataSource(imageBytes)
-        val mediaByteUri = UriByteDataHelper().getUri(imageBytes)
-        val dataSpec = DataSpec(mediaByteUri)
+        var decrypted : ByteArray? = null
+        CoroutineScope(Dispatchers.Main + Job()).launch {
+            val deferred = async(Dispatchers.Default) {
+                decrypted = CryptoUtil.decrypt(java.io.File(file.path))
+            }
 
-        try { byteArrayDataSource.open(dataSpec) } catch (e: IOException) { e.printStackTrace() }
-        val factory = object : com.google.android.exoplayer2.upstream.DataSource.Factory {
-            override fun createDataSource(): com.google.android.exoplayer2.upstream.DataSource { return byteArrayDataSource } }
-
-        val mediaSource = ExtractorMediaSource.Factory(factory).createMediaSource(mediaByteUri)
-        player?.prepare(mediaSource)
-
-        showAtLocation(v, Gravity.CENTER, 0, 0)
+            deferred.await()
+            val byteArrayDataSource = ByteArrayDataSource(decrypted)
+            val mediaByteUri = UriByteDataHelper().getUri(decrypted!!)
+            val dataSpec = DataSpec(mediaByteUri)
+            try { byteArrayDataSource.open(dataSpec) } catch (e: IOException) { e.printStackTrace() }
+            val factory = object : DataSource.Factory { override fun createDataSource(): DataSource { return byteArrayDataSource } }
+            val mediaSource = ExtractorMediaSource.Factory(factory).createMediaSource(mediaByteUri)
+            (view.video.player as SimpleExoPlayer).prepare(mediaSource)
+            showAtLocation(v, Gravity.CENTER, 0, 0)
+        }
 
         //endregion init video
     }
@@ -141,26 +125,26 @@ class FullScreenVideo(mContext: Context, v: View, imageBytes: ByteArray) :
     //region private methods
 
     private fun showController() {
-        controllerLayout.clearAnimation()
-        controllerLayout.visibility = View.VISIBLE
+        view.controller_layout.clearAnimation()
+        view.controller_layout.visibility = View.VISIBLE
     }
 
     private fun hideController() {
-        if (controllerLayout.visibility == View.VISIBLE)
-            controllerLayout.visibility = View.INVISIBLE
+        if (view.controller_layout.visibility == View.VISIBLE)
+            view.controller_layout.visibility = View.INVISIBLE
     }
 
     private fun pauseVideo() {
-        pauseButton.visibility = View.GONE
-        playButton.visibility = View.VISIBLE
-        player?.playWhenReady = false
+        view.controller_pause.visibility = View.GONE
+        view.controller_play.visibility = View.VISIBLE
+        view.video.player?.playWhenReady = false
         updateHandler?.removeCallbacks(updateProgressAction)
     }
 
     private fun playVideo() {
-        playButton.visibility = View.GONE
-        pauseButton.visibility = View.VISIBLE
-        player?.playWhenReady = true
+        view.controller_play.visibility = View.GONE
+        view.controller_pause.visibility = View.VISIBLE
+        view.video.player?.playWhenReady = true
         hideController()
     }
 
@@ -172,32 +156,32 @@ class FullScreenVideo(mContext: Context, v: View, imageBytes: ByteArray) :
 
     private fun muteVideo() {
         resetHandler()
-        player?.volume = 1f
-        muteButton.visibility = View.GONE
-        volumeButton.visibility = View.VISIBLE
+        (view.video.player as SimpleExoPlayer).volume = 1f
+        view.controller_mute.visibility = View.GONE
+        view.controller_volume.visibility = View.VISIBLE
     }
 
     private fun unMuteVideo() {
         resetHandler()
-        player?.volume = 0f
-        muteButton.visibility = View.VISIBLE
-        volumeButton.visibility = View.GONE
+        (view.video.player as SimpleExoPlayer).volume = 0f
+        view.controller_mute.visibility = View.VISIBLE
+        view.controller_volume.visibility = View.GONE
     }
 
     private fun updateProgressBar() {
-        val duration = (if (player == null) 0 else player!!.duration).toLong()
-        val position = (if (player == null) 0 else player?.currentPosition)!!.toLong()
-        val bufferedPosition = (if (player == null) 0 else player?.bufferedPosition)!!.toLong()
+        val duration = (if (view.video.player == null) 0 else view.video.player!!.duration).toLong()
+        val position = (if (view.video.player == null) 0 else view.video.player?.currentPosition)!!.toLong()
+        val bufferedPosition = (if (view.video.player == null) 0 else view.video.player?.bufferedPosition)!!.toLong()
 
-        progressBar.setPosition(position)
-        progressBar.setBufferedPosition(bufferedPosition)
-        progressBar.setDuration(duration)
+        view.controller_progress.setPosition(position)
+        view.controller_progress.setBufferedPosition(bufferedPosition)
+        view.controller_progress.setDuration(duration)
 
         updateHandler?.removeCallbacks(updateProgressAction)
-        val playbackState = if (player == null) Player.STATE_IDLE else player?.playbackState
+        val playbackState = if (view.video.player == null) Player.STATE_IDLE else view.video.player?.playbackState
         if (playbackState != Player.STATE_IDLE && playbackState != Player.STATE_ENDED) {
             var delayMs: Long
-            if (player?.playWhenReady!! && playbackState == Player.STATE_READY) {
+            if (view.video.player?.playWhenReady!! && playbackState == Player.STATE_READY) {
                 delayMs = 800 - position % 800
                 if (delayMs < 200) delayMs += 800
             } else delayMs = 800
@@ -208,27 +192,27 @@ class FullScreenVideo(mContext: Context, v: View, imageBytes: ByteArray) :
     private fun rotateVideo() {
         resetHandler()
         isRotating = true
-        videoView.x = videoX!!
-        videoView.y = videoY!!
+        view.video.x = videoX!!
+        view.video.y = videoY!!
 
         val rotateDegree: Float = if (isLandscape) 0f else 90f
         val scaleFactor: Float = if (isLandscape) 1f
             else {
-                if (videoView.width >= videoView.height) frame.width.toFloat() / videoView.height.toFloat()
-                else frame.height.toFloat() / videoView.width.toFloat()
+                if (view.video.width >= view.video.height) view.rl_custom_layout.width.toFloat() / view.video.height.toFloat()
+                else view.rl_custom_layout.height.toFloat() / view.video.width.toFloat()
             }
 
         val animatorSet = AnimatorSet()
         animatorSet.duration = 500
         animatorSet.playTogether(
-            ObjectAnimator.ofFloat(videoView, "rotation", rotateDegree),
-            ObjectAnimator.ofFloat(pauseButton, "rotation", rotateDegree),
-            ObjectAnimator.ofFloat(playButton, "rotation", rotateDegree),
-            ObjectAnimator.ofFloat(muteButton, "rotation", rotateDegree),
-            ObjectAnimator.ofFloat(volumeButton, "rotation", rotateDegree),
-            ObjectAnimator.ofFloat(rotateButton, "rotation", rotateDegree),
-            ObjectAnimator.ofFloat(videoView, "scaleX", scaleFactor),
-            ObjectAnimator.ofFloat(videoView, "scaleY", scaleFactor)
+            ObjectAnimator.ofFloat(view.video, "rotation", rotateDegree),
+            ObjectAnimator.ofFloat(view.controller_pause, "rotation", rotateDegree),
+            ObjectAnimator.ofFloat(view.controller_play, "rotation", rotateDegree),
+            ObjectAnimator.ofFloat(view.controller_mute, "rotation", rotateDegree),
+            ObjectAnimator.ofFloat(view.controller_volume, "rotation", rotateDegree),
+            ObjectAnimator.ofFloat(view.controller_rotate, "rotation", rotateDegree),
+            ObjectAnimator.ofFloat(view.video, "scaleX", scaleFactor),
+            ObjectAnimator.ofFloat(view.video, "scaleY", scaleFactor)
         )
         animatorSet.addListener(ComposableAnimatorListener {
             this.scaleFactor = scaleFactor
@@ -241,11 +225,11 @@ class FullScreenVideo(mContext: Context, v: View, imageBytes: ByteArray) :
 
     private fun seekVideo(position: Long) {
         resetHandler()
-        player?.seekTo(position)
+        view.video.player?.seekTo(position)
     }
 
     private fun toggleController(): Boolean {
-        if (controllerLayout.visibility == View.VISIBLE)
+        if (view.controller_layout.visibility == View.VISIBLE)
             hideController()
         else
             showController()
@@ -255,34 +239,34 @@ class FullScreenVideo(mContext: Context, v: View, imageBytes: ByteArray) :
     private fun onDraw() {
         if (isRotating) return
         isScaling = scaleFactor != 1f
-        videoView.scaleX = scaleFactor
-        videoView.scaleY = scaleFactor
+        view.video.scaleX = scaleFactor
+        view.video.scaleY = scaleFactor
     }
 
     private fun onTouchFrame(event: MotionEvent): Boolean {
         resetHandler()
-        gestureDetector.onTouchEvent(event)
-        frame.requestDisallowInterceptTouchEvent(true)
+        gestureDetector!!.onTouchEvent(event)
+        view.rl_custom_layout.requestDisallowInterceptTouchEvent(true)
         return true
     }
 
     private fun scaleVideo(detector: ScaleGestureDetector): Boolean {
-            scaleFactor *= detector.scaleFactor
-            val tmp = Math.max(0.1f, Math.min(scaleFactor, 5.0f))
-            scaleFactor = if (tmp < limitFactor) limitFactor else tmp
-            videoView.invalidate()
+        scaleFactor *= detector.scaleFactor
+        val tmp = Math.max(0.1f, Math.min(scaleFactor, 5.0f))
+        scaleFactor = if (tmp < limitFactor) limitFactor else tmp
+        view.video.invalidate()
 
         return false
     }
 
     private fun onFirstFrame() {
-        loading.visibility = View.GONE
+        view.loading.visibility = View.GONE
     }
 
     private fun onTouchVideo(event: MotionEvent): Boolean {
         resetHandler()
-        scaleGestureDetector.onTouchEvent(event)
-        gestureDetector.onTouchEvent(event)
+        scaleGestureDetector!!.onTouchEvent(event)
+        gestureDetector!!.onTouchEvent(event)
         onTouchEvent(event)
         return true
     }
@@ -324,48 +308,48 @@ class FullScreenVideo(mContext: Context, v: View, imageBytes: ByteArray) :
 
     private fun checkClipping(x: Float, y: Float) {
         if (videoX == null || videoY == null) {
-            videoX = videoView.x
-            videoY = videoView.y
+            videoX = view.video.x
+            videoY = view.video.y
         }
 
         val videoWidth: Float
         val videoHeight: Float
         if (!isLandscape) {
-            videoWidth = videoView.width * scaleFactor
-            videoHeight = videoView.height * scaleFactor
+            videoWidth = view.video.width * scaleFactor
+            videoHeight = view.video.height * scaleFactor
         } else {
-            videoWidth = videoView.height * scaleFactor
-            videoHeight = videoView.width * scaleFactor
+            videoWidth = view.video.height * scaleFactor
+            videoHeight = view.video.width * scaleFactor
         }
 
-        val tmpX = (videoWidth - frame.width) / 2
-        val tmpY = (videoHeight - frame.height) / 2
-        val nextX = videoView.x + x
-        val nextY = videoView.y + y
+        val tmpX = (videoWidth - view.rl_custom_layout.width) / 2
+        val tmpY = (videoHeight - view.rl_custom_layout.height) / 2
+        val nextX = view.video.x + x
+        val nextY = view.video.y + y
 
-        if (videoWidth > frame.width) {
+        if (videoWidth > view.rl_custom_layout.width) {
             if (nextX <= tmpX +videoX!! && nextX >= -tmpX +videoX!!)
-                videoView.x = nextX
+                view.video.x = nextX
             else if (nextX <= tmpX +videoX!!)
-                videoView.x = -tmpX +videoX!!
+                view.video.x = -tmpX +videoX!!
             else
-                videoView.x = tmpX +videoX!!
+                view.video.x = tmpX +videoX!!
         }
         else if (videoX != null)
-            videoView.x = videoX!!
+            view.video.x = videoX!!
 
-        if (videoHeight > frame.height) {
+        if (videoHeight > view.rl_custom_layout.height) {
             if (nextY <= tmpY +videoY!! && nextY >= -tmpY +videoY!!)
-                videoView.y = nextY
+                view.video.y = nextY
             else if (nextY <= tmpY +videoY!!)
-                videoView.y = -tmpY +videoY!!
+                view.video.y = -tmpY +videoY!!
             else
-                videoView.y = tmpY +videoY!!
+                view.video.y = tmpY +videoY!!
         }
         else if (videoY != null)
-            videoView.y = videoY!!
+            view.video.y = videoY!!
 
-        videoView.invalidate()
+        view.video.invalidate()
     }
 
     //endregion private methods
@@ -376,11 +360,11 @@ class FullScreenVideo(mContext: Context, v: View, imageBytes: ByteArray) :
         pauseVideo()
         updateHandler?.removeCallbacks(updateProgressAction)
         timeoutHandler?.removeCallbacks(interactionTimeoutRunnable)
-        lockLayout.visibility = View.VISIBLE
+        view.layout_lock.visibility = View.VISIBLE
     }
 
     fun onResume() {
-        lockLayout.visibility = View.GONE
+        view.layout_lock.visibility = View.GONE
         showController()
     }
 
@@ -389,9 +373,32 @@ class FullScreenVideo(mContext: Context, v: View, imageBytes: ByteArray) :
     //region override
 
     override fun dismiss() {
-        player?.release()
+        view.video.player?.release()
         updateHandler?.removeCallbacks(updateProgressAction)
         timeoutHandler?.removeCallbacks(interactionTimeoutRunnable)
+        view.controller_close.setOnClickListener(null)
+        view.controller_minimize.setOnClickListener(null)
+        view.controller_mute.setOnClickListener(null)
+        view.controller_volume.setOnClickListener(null)
+        view.controller_pause.setOnClickListener(null)
+        view.controller_play.setOnClickListener(null)
+        view.controller_rotate.setOnClickListener(null)
+        view.video.setOnTouchListener(null)
+        view.rl_custom_layout.setOnTouchListener(null)
+
+        (view.video.player as SimpleExoPlayer).removeListener(listener)
+        (view.video.player as SimpleExoPlayer).setVideoListener(null)
+        view.controller_progress.removeListener(progressListener)
+        view.video.viewTreeObserver.removeOnDrawListener { onDraw() }
+
+        gestureDetector = null
+        listener = null
+        progressListener = null
+        scaleGestureDetector = null
+        interactionTimeoutRunnable = null
+        updateProgressAction = null
+        videoX = null
+        videoY = null
 
         super.dismiss()
     }

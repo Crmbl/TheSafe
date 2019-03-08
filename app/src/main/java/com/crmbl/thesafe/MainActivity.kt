@@ -26,17 +26,18 @@ import com.beust.klaxon.Klaxon
 import com.crmbl.thesafe.listeners.ComposableAnimationListener
 import com.crmbl.thesafe.listeners.ComposableTransitionListener
 import com.crmbl.thesafe.utils.CryptoUtil
-import com.crmbl.thesafe.utils.RecyclerItemClickListener
 import com.crmbl.thesafe.viewHolders.ImageViewHolder
+import com.crmbl.thesafe.viewHolders.ImageViewHolder.ImageViewHolderListener
+import com.crmbl.thesafe.viewHolders.ScrollUpViewHolder
 import com.crmbl.thesafe.viewHolders.VideoViewHolder
 import com.crmbl.thesafe.viewHolders.VideoViewHolder.VideoViewHolderListener
+import com.crmbl.thesafe.viewHolders.ScrollUpViewHolder.ScrollUpViewHolderListener
 import com.github.ybq.android.spinkit.style.CubeGrid
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import kotlinx.coroutines.*
 
-
-//TODO improve min height, not really nice
+//TODO improve scrolling smoothness !
 class MainActivity : AppCompatActivity() {
 
     private val loadLimit : Int = 5
@@ -69,6 +70,8 @@ class MainActivity : AppCompatActivity() {
     private var broadcastReceiver: BroadcastReceiver? = null
 
     private var videoListener: VideoViewHolderListener? = null
+    private var imageListener: ImageViewHolderListener? = null
+    private var scrollUpListener: ScrollUpViewHolderListener? = null
 
     //region override methods
 
@@ -168,23 +171,24 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        //TODO delete/remove this Listener
-        recyclerView.addOnItemTouchListener(RecyclerItemClickListener(this, recyclerView,
-            object: RecyclerItemClickListener.OnItemClickListener{
-                override fun onLongItemClick(view: View?, position: Int) {}
-                override fun onItemClick(view: View, position: Int) {
-                    //showPopup(view, position)
-                }
-            })
-        )
-
         goSettings.setOnClickListener {this.goSettings()}
 
-        //TODO not working
         videoListener = object : VideoViewHolderListener {
-            override fun onFullScreenButtonClick(item: File) {
-                Toast.makeText(applicationContext, "ANUS DILATUS", Toast.LENGTH_SHORT).show()
-                //showPopup(view, position)
+            override fun onFullScreenButtonClick(view: View, item: File) {
+                showPopup(view, item)
+            }
+        }
+
+        imageListener = object: ImageViewHolderListener {
+            override fun onDoubleTap(view: View, item: File) {
+                showPopup(view, item)
+            }
+        }
+
+        scrollUpListener = object: ScrollUpViewHolder.ScrollUpViewHolderListener {
+            override fun onClick() {
+                recyclerView.layoutManager!!.scrollToPosition(0)
+                recyclerView.tag = "smoothScrolling"
             }
         }
 
@@ -312,7 +316,7 @@ class MainActivity : AppCompatActivity() {
             if (loadedFiles != actualFolderFiltered.count()) files?.add(File(type="footer"))
         }
 
-        adapter = ItemAdapter(applicationContext, files!!, videoListener!!)
+        adapter = ItemAdapter(applicationContext, files!!, videoListener!!, imageListener!!, scrollUpListener!!)
         recyclerView.adapter = adapter
         if (loadedFiles == actualFolderFiltered.count() && recyclerView.computeVerticalScrollRange() > recyclerView.height) {
             files?.add(File(type="scrollUp"))
@@ -552,8 +556,7 @@ class MainActivity : AppCompatActivity() {
 
     //endregion private methods
 
-    fun showPopup(view: View, position: Int, _file: File? = null) {
-        /*val file : File = _file ?: files!![position]
+    fun showPopup(view: View, file: File) {
         if (file.type != "imageView" && file.type != "videoView") return
 
         popupDismissed = false
@@ -563,8 +566,8 @@ class MainActivity : AppCompatActivity() {
         scrollView.visibility = View.INVISIBLE
 
         when {
-            file.type == "imageView" -> fullScreen = FullScreenImage(applicationContext, view, file.decrypted!!, file.originName.split('.').last())
-            file.type == "videoView" -> fullScreen = FullScreenVideo(applicationContext, view, file.decrypted!!)
+            file.type == "imageView" -> fullScreen = FullScreenImage(applicationContext, view, file)
+            file.type == "videoView" -> fullScreen = FullScreenVideo(applicationContext, view, file)
         }
 
         val fadeIn = Fade(Fade.MODE_IN)
@@ -598,6 +601,6 @@ class MainActivity : AppCompatActivity() {
                 }
                 return false
             }
-        })*/
+        })
     }
 }

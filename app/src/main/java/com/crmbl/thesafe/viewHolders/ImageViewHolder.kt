@@ -2,37 +2,42 @@ package com.crmbl.thesafe.viewHolders
 
 import android.content.res.Resources
 import android.graphics.drawable.BitmapDrawable
+import android.view.GestureDetector
 import android.view.View
-import android.widget.FrameLayout
-import android.widget.LinearLayout
 import android.widget.RelativeLayout
-import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.crmbl.thesafe.File
-import com.crmbl.thesafe.MainActivity
 import com.crmbl.thesafe.R
+import com.crmbl.thesafe.listeners.ComposableGestureListener
+import com.crmbl.thesafe.listeners.ComposableTouchListener
 import com.crmbl.thesafe.utils.CryptoUtil
+import kotlinx.android.synthetic.main.image_item.view.*
 import kotlinx.coroutines.*
 import pl.droidsonroids.gif.GifDrawable
-import pl.droidsonroids.gif.GifImageView
 import java.io.ByteArrayInputStream
 
 
-class ImageViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
+class ImageViewHolder(itemView: View, private val _listener: ImageViewHolderListener): RecyclerView.ViewHolder(itemView) {
+
+    interface ImageViewHolderListener {
+        fun onDoubleTap(view: View, item: File)
+    }
+
+    private var imageListener : ImageViewHolderListener? = null
+    private var gestureDetector : GestureDetector? = null
+    private var touchListener : View.OnTouchListener? = null
 
     fun bind(file : File) {
         val splitedName = file.originName.split('.')
-        itemView.findViewById<TextView>(R.id.textview_title).text = splitedName.first()
-        itemView.findViewById<TextView>(R.id.textview_ext).text = splitedName.last()
+        itemView.textview_title.text = splitedName.first()
+        itemView.textview_ext.text = splitedName.last()
 
-        val waitingFrame = itemView.findViewById<FrameLayout>(R.id.waiting_frame)
-        waitingFrame.visibility = View.VISIBLE
-        waitingFrame.minimumHeight = file.height.toInt()
-        waitingFrame.minimumWidth = file.width.toInt()
-        val bottomLayout = itemView.findViewById<LinearLayout>(R.id.bottom_layout)
-        val params = bottomLayout.layoutParams as RelativeLayout.LayoutParams
+        itemView.waiting_frame.visibility = View.VISIBLE
+        itemView.waiting_frame.minimumHeight = file.height.toInt()
+        itemView.waiting_frame.minimumWidth = file.width.toInt()
+        val params = itemView.bottom_layout.layoutParams as RelativeLayout.LayoutParams
         params.addRule(RelativeLayout.BELOW, R.id.waiting_frame)
-        bottomLayout.layoutParams = params
+        itemView.bottom_layout.layoutParams = params
 
         var decryptedStream : ByteArrayInputStream? = null
         CoroutineScope(Dispatchers.Main + Job()).launch {
@@ -42,46 +47,49 @@ class ImageViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
 
             deferred.await()
             params.addRule(RelativeLayout.BELOW, R.id.imageView)
-            bottomLayout.layoutParams = params
-            waitingFrame.visibility = View.GONE
+            itemView.bottom_layout.layoutParams = params
+            itemView.waiting_frame.visibility = View.GONE
 
             when {
                 splitedName.last().toLowerCase() == "gif" -> {
-                    itemView.findViewById<GifImageView>(R.id.imageView).setImageDrawable(
-                        GifDrawable(decryptedStream!!))
-                }
+                    itemView.imageView.setImageDrawable(GifDrawable(decryptedStream!!)) }
                 else -> {
-                    itemView.findViewById<GifImageView>(R.id.imageView).setImageDrawable(
-                        BitmapDrawable(Resources.getSystem(), decryptedStream!!))
-                }
+                    itemView.imageView.setImageDrawable(BitmapDrawable(Resources.getSystem(), decryptedStream!!)) }
             }
         }
+
+        imageListener = _listener
+        gestureDetector = GestureDetector(itemView.context, ComposableGestureListener().onDoubleTap {
+            imageListener!!.onDoubleTap(itemView, file); true})
+        touchListener = ComposableTouchListener { _, event -> gestureDetector!!.onTouchEvent(event) ; true }
+        itemView.imageView.setOnTouchListener(touchListener)
     }
 
     fun clearAnimation() {
-        val mediaView = itemView.findViewById<GifImageView>(R.id.imageView)
-        if (mediaView.drawable != null && mediaView.drawable is GifDrawable)
-            (mediaView.drawable as GifDrawable).pause()
+        if (itemView.imageView.drawable != null && itemView.imageView.drawable is GifDrawable)
+            (itemView.imageView.drawable as GifDrawable).pause()
 
         itemView.clearAnimation()
     }
 
     fun resumeGif() {
-        val mediaView = itemView.findViewById<GifImageView>(R.id.imageView)
-        if (mediaView.drawable != null && mediaView.drawable is GifDrawable)
-            (mediaView.drawable as GifDrawable).start()
+        if (itemView.imageView.drawable != null && itemView.imageView.drawable is GifDrawable)
+            (itemView.imageView.drawable as GifDrawable).start()
     }
 
     fun recycleView() {
-        val mediaView = itemView.findViewById<GifImageView>(R.id.imageView)
-        if (mediaView.drawable == null) return
+        if (itemView.imageView.drawable == null) return
 
-        val mediaViewDrawable = mediaView.drawable
+        val mediaViewDrawable = itemView.imageView.drawable
         if (mediaViewDrawable is GifDrawable)
             mediaViewDrawable.recycle()
         if (mediaViewDrawable is BitmapDrawable)
             mediaViewDrawable.bitmap.recycle()
 
-        mediaView.setImageDrawable(null)
+        itemView.imageView.setImageDrawable(null)
+        itemView.imageView.setOnTouchListener(null)
+        gestureDetector = null
+        imageListener = null
+        touchListener = null
     }
 }
