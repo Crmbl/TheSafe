@@ -61,12 +61,13 @@ class MainActivity : AppCompatActivity() {
     private var imageListener: ImageViewHolderListener? = null
     private var scrollUpListener: ScrollUpViewHolderListener? = null
 
+    //TODO find use for this ?
     private val connection = object : ServiceConnection {
-        override fun onServiceDisconnected(name: ComponentName?) {}
+        override fun onServiceDisconnected(name: ComponentName?) {
+            android.util.Log.d("TEST", "SERVICE DISCONNECTED")
+        }
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            if (service is VideoService.VideoServiceBinder) {
-                //view.video.player = service.getExoPlayerInstance()
-            }
+            android.util.Log.d("TEST", "SERVICE CONNECTED")
         }
     }
 
@@ -159,7 +160,7 @@ class MainActivity : AppCompatActivity() {
 
         videoListener = object : VideoViewHolderListener {
             override fun onFullScreenButtonClick(view: View, item: File) { showPopup(view, item) }
-            override fun onBackgroundButtonClick(view: View, item: File) { runInBackground(view, item) }
+            override fun onBackgroundButtonClick(view: View, item: File) { runInBackground(item) }
         }
         imageListener = object: ImageViewHolderListener {
             override fun onDoubleTap(view: View, item: File) { showPopup(view, item) }
@@ -584,9 +585,10 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    //TODO implement run in background service
-    private fun runInBackground(view: View, item: File) {
-        android.util.Log.d("TEST", "TEST")
+    private fun runInBackground(item: File) {
+        val intent = Intent(this, VideoService::class.java)
+        intent.putExtra(VideoService.VIDEO_PATH, item.path)
+        bindService(intent, connection, Context.BIND_AUTO_CREATE)
     }
 
     //endregion private methods
