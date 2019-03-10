@@ -9,15 +9,12 @@ import android.content.res.Resources
 import android.graphics.drawable.BitmapDrawable
 import android.view.*
 import android.widget.*
-import com.crmbl.thesafe.listeners.ComposableAnimatorListener
-import com.crmbl.thesafe.listeners.ComposableGestureListener
-import com.crmbl.thesafe.listeners.ComposableScaleGestureListener
-import com.crmbl.thesafe.listeners.ComposableTouchListener
 import com.crmbl.thesafe.utils.CryptoUtil
 import kotlinx.android.synthetic.main.image_fullscreen.view.*
 import kotlinx.coroutines.*
 import pl.droidsonroids.gif.GifDrawable
 import java.io.ByteArrayInputStream
+import com.crmbl.thesafe.listeners.*
 
 
 @SuppressLint("ClickableViewAccessibility", "InflateParams")
@@ -126,14 +123,15 @@ class FullScreenImage(mContext: Context, v: View, file: File) :
     }
 
     private fun fastZoom() {
-        if (scaleFactor < 3)
-            scaleFactor = 3f
-        if (scaleFactor < 6)
-            scaleFactor = 6f
-        if (scaleFactor == 6f)
-            scaleFactor = 1f
+        when {
+            scaleFactor < 2.5f -> scaleFactor = 2.5f
+            scaleFactor < 5f -> scaleFactor = 5f
+            scaleFactor == 5f -> {
+                scaleFactor = if (isLandscape) limitFactor
+                              else 1f
+            }
+        }
 
-        //TODO not working :(
         view.image.invalidate()
     }
 

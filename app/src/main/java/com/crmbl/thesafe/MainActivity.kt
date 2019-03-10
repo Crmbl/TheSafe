@@ -2,10 +2,7 @@ package com.crmbl.thesafe
 
 import android.annotation.SuppressLint
 import android.app.ActivityOptions
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.os.Bundle
 import android.transition.Fade
 import android.util.TypedValue
@@ -16,7 +13,6 @@ import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.bottomappbar.BottomAppBar
 import androidx.appcompat.widget.SearchView
 import androidx.core.content.ContextCompat
 import androidx.core.view.MotionEventCompat
@@ -34,7 +30,7 @@ import com.crmbl.thesafe.viewHolders.VideoViewHolder.VideoViewHolderListener
 import com.crmbl.thesafe.viewHolders.ScrollUpViewHolder.ScrollUpViewHolderListener
 import com.github.ybq.android.spinkit.style.CubeGrid
 import com.google.android.material.chip.Chip
-import com.google.android.material.chip.ChipGroup
+import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.*
 
 //TODO improve scrolling smoothness !
@@ -58,17 +54,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cryptedMapping : java.io.File
     private lateinit var theSafeFolder : java.io.File
 
-    private lateinit var recyclerView : RecyclerView
-    private lateinit var lockLayout : FrameLayout
-    private lateinit var scrollView: HorizontalScrollView
-    private lateinit var emptyLayout : LinearLayout
-    private lateinit var progressBar : ProgressBar
-    private lateinit var bottomBar : BottomAppBar
-    private lateinit var searchView: SearchView
-    private lateinit var chipGroup : ChipGroup
-    private lateinit var layoutManager : LinearLayoutManager
     private var broadcastReceiver: BroadcastReceiver? = null
-
     private var videoListener: VideoViewHolderListener? = null
     private var imageListener: ImageViewHolderListener? = null
     private var scrollUpListener: ScrollUpViewHolderListener? = null
@@ -93,26 +79,13 @@ class MainActivity : AppCompatActivity() {
         CryptoUtil.password = prefs.passwordDecryptHash
         CryptoUtil.salt = prefs.saltDecryptHash
 
-        scrollView = findViewById(R.id.scrollView_chipgroup)
-        bottomBar = findViewById(R.id.bar)
-        lockLayout = findViewById(R.id.layout_lock)
-        emptyLayout = findViewById(R.id.linearLayout_no_result)
-        chipGroup = findViewById(R.id.chipgroup_folders)
-        searchView = bottomBar.findViewById(R.id.searchview)
+        progress_bar.visibility = View.VISIBLE
+        progress_bar.setIndeterminateDrawable(CubeGrid())
 
-        progressBar = findViewById(R.id.progress_bar)
-        progressBar.indeterminateDrawable = CubeGrid()
-        progressBar.visibility = View.VISIBLE
+        val layoutManager = LinearLayoutManager(this)
+        recyclerview_main.layoutManager = layoutManager
 
-        recyclerView = findViewById(R.id.recyclerview_main)
-        layoutManager = LinearLayoutManager(this)
-        recyclerView.layoutManager = layoutManager
-
-        val clearButton = searchView.findViewById<ImageView>(R.id.search_close_btn)
-        val goSettings = findViewById<ImageView>(R.id.imageview_go_settings)
-        val searchView = findViewById<SearchView>(R.id.searchview)
-
-        val editText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
+        val editText = searchview.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
         editText.setTextColor(resources.getColor(R.color.colorBackground, theme))
         editText.setHintTextColor(resources.getColor(R.color.colorHint, theme))
 
@@ -123,17 +96,17 @@ class MainActivity : AppCompatActivity() {
 
         //region listeners
 
-        searchView.setOnQueryTextListener(object: SearchView.OnQueryTextListener {
+        searchview.setOnQueryTextListener(object: SearchView.OnQueryTextListener {
             override fun onQueryTextChange(newText: String?): Boolean { return false }
             override fun onQueryTextSubmit(query: String?): Boolean { searchQuery(query); return false }
         })
 
-        clearButton.setOnClickListener {
-            searchView.setQuery("", false)
+        searchview.findViewById<ImageView>(R.id.search_close_btn).setOnClickListener {
+            searchview.setQuery("", false)
             searchQuery("")
         }
 
-        recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+        recyclerview_main.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) { super.onScrolled(recyclerView, dx, dy)
                 if (layoutManager.findLastCompletelyVisibleItemPosition() == files?.size!! -1) updateListView()
                 if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) showUi()
@@ -144,7 +117,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        recyclerView.setOnTouchListener(object : View.OnTouchListener {
+        recyclerview_main.setOnTouchListener(object : View.OnTouchListener {
             var initialY : Float = 0f
             var previouslyShown : Boolean = false
 
@@ -171,7 +144,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        goSettings.setOnClickListener {this.goSettings()}
+        imageview_go_settings.setOnClickListener {goSettings()}
 
         videoListener = object : VideoViewHolderListener {
             override fun onFullScreenButtonClick(view: View, item: File) {
@@ -187,8 +160,8 @@ class MainActivity : AppCompatActivity() {
 
         scrollUpListener = object: ScrollUpViewHolder.ScrollUpViewHolderListener {
             override fun onClick() {
-                recyclerView.layoutManager!!.scrollToPosition(0)
-                recyclerView.tag = "smoothScrolling"
+                recyclerview_main.layoutManager!!.scrollToPosition(0)
+                recyclerview_main.tag = "smoothScrolling"
             }
         }
 
@@ -201,21 +174,21 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
 
         if (isPaused) {
-            if (!popupDismissed) {
+            if (popupDismissed) layout_lock.visibility = View.GONE
+            else {
                 if (fullScreen is FullScreenImage)
                     (fullScreen!! as FullScreenImage).onResume()
                 if (fullScreen is FullScreenVideo)
                     (fullScreen!! as FullScreenVideo).onResume()
             }
-            else lockLayout.visibility = View.GONE
 
-            bottomBar.visibility = View.VISIBLE
-            scrollView.visibility = View.VISIBLE
+            bar.visibility = View.VISIBLE
+            scrollView_chipgroup.visibility = View.VISIBLE
             isPaused = false
             return
         }
 
-        progressBar.animate().alpha(0f).setDuration(125).withEndAction{ progressBar.visibility = View.GONE }.start()
+        progress_bar.animate().alpha(0f).setDuration(125).withEndAction{ progress_bar.visibility = View.GONE }.start()
         isPaused = true
         val intent = Intent(this@MainActivity, LoginActivity::class.java)
         intent.putExtra("previous", "MainActivity")
@@ -231,14 +204,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         if (!goSettings) {
-            bottomBar.visibility = View.GONE
-            if (!popupDismissed) {
+            bar.visibility = View.GONE
+            if (popupDismissed) layout_lock.visibility = View.VISIBLE
+            else {
                 if (fullScreen is FullScreenImage)
                     (fullScreen!! as FullScreenImage).onPause()
                 if (fullScreen is FullScreenVideo)
                     (fullScreen!! as FullScreenVideo).onPause()
             }
-            else lockLayout.visibility = View.VISIBLE
         }
 
         goSettings = false
@@ -303,10 +276,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        if (progressBar.visibility != View.GONE) {
-            progressBar.animate().alpha(0f).setDuration(125).withEndAction{
-                progressBar.visibility = View.GONE
-                if (recyclerView.visibility != View.VISIBLE) recyclerView.visibility = View.VISIBLE
+        if (this@MainActivity.progress_bar.visibility != View.GONE) {
+            this@MainActivity.progress_bar.animate().alpha(0f).setDuration(125).withEndAction{
+                this@MainActivity.progress_bar.visibility = View.GONE
+                if (recyclerview_main.visibility != View.VISIBLE) recyclerview_main.visibility = View.VISIBLE
             }.start()
         }
 
@@ -316,18 +289,19 @@ class MainActivity : AppCompatActivity() {
             if (loadedFiles != actualFolderFiltered.count()) files?.add(File(type="footer"))
         }
 
-        adapter = ItemAdapter(applicationContext, files!!, videoListener!!, imageListener!!, scrollUpListener!!)
-        recyclerView.adapter = adapter
-        if (loadedFiles == actualFolderFiltered.count() && recyclerView.computeVerticalScrollRange() > recyclerView.height) {
+        adapter = ItemAdapter(files!!, videoListener!!, imageListener!!, scrollUpListener!!)
+        recyclerview_main.adapter = adapter
+        if (loadedFiles == actualFolderFiltered.count() && recyclerview_main.computeVerticalScrollRange() > recyclerview_main.height) {
             files?.add(File(type="scrollUp"))
             adapter?.notifyDataSetChanged()
         }
 
         showUi()
         if (actualFolderFiltered.count() == 0) {
-            emptyLayout.alpha = 0f
-            emptyLayout.visibility = View.VISIBLE
-            emptyLayout.animate().alpha(1f).setDuration(125).withEndAction{ emptyLayout.alpha = 1f }.start()
+            this@MainActivity.linearLayout_no_result.alpha = 0f
+            this@MainActivity.linearLayout_no_result.visibility = View.VISIBLE
+            this@MainActivity.linearLayout_no_result.animate().alpha(1f).setDuration(125).withEndAction{
+                this@MainActivity.linearLayout_no_result.alpha = 1f }.start()
         }
     }
 
@@ -366,7 +340,8 @@ class MainActivity : AppCompatActivity() {
             }
             if (loadedFiles != actualFolderFiltered.count())
                 files!!.add(File(type="footer"))
-            else if (loadedFiles == actualFolderFiltered.count() && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount)
+            else if (loadedFiles == actualFolderFiltered.count()
+                && (recyclerview_main.layoutManager as LinearLayoutManager).findLastCompletelyVisibleItemPosition() < adapter!!.itemCount)
                 files!!.add(File(type="scrollUp"))
             adapter?.notifyItemInserted(loadedFiles +1)
         }
@@ -379,7 +354,7 @@ class MainActivity : AppCompatActivity() {
     private fun createChips(originFolder : Folder) = CoroutineScope(Dispatchers.Main + Job()).launch {
         var index = 0
         if (originFolder != mapping) {
-            val chip = Chip(chipGroup.context)
+            val chip = Chip(chipgroup_folders.context)
             chip.id = originFolder.folders.count()
             chip.chipIcon = resources.getDrawable(R.drawable.ic_chevron_left_white_24dp, theme)
             chip.setChipBackgroundColorResource(R.color.colorAccent)
@@ -393,14 +368,14 @@ class MainActivity : AppCompatActivity() {
             chip.elevation = 5f
             chip.alpha = 0f
             chip.setOnClickListener { goBack() }
-            chipGroup.addView(chip)
+            chipgroup_folders.addView(chip)
             val fadeIn = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_in_no_delay)
             fadeIn.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view:View? -> view?.alpha = 1f }))
             chip.startAnimation(fadeIn)
             index++
         }
         for ((i, folder) in originFolder.folders.withIndex()) {
-            val chip = Chip(chipGroup.context)
+            val chip = Chip(chipgroup_folders.context)
             chip.id = i
             chip.setChipBackgroundColorResource(R.color.colorHintAccent)
             chip.setTextColor(resources.getColor(R.color.colorBackground, theme))
@@ -411,7 +386,7 @@ class MainActivity : AppCompatActivity() {
             chip.elevation = 5f
             chip.setOnClickListener { v -> goForward(v as Chip) }
             chip.alpha = 0f
-            chipGroup.addView(chip)
+            chipgroup_folders.addView(chip)
             val fadeIn = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_in_no_delay)
             fadeIn.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view:View? -> view?.alpha = 1f }))
             chip.postDelayed({ chip.startAnimation(fadeIn) }, index * 50L)
@@ -421,27 +396,27 @@ class MainActivity : AppCompatActivity() {
 
     private fun showUi() {
         val slideUp = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_up_bottombar)
-        slideUp.setAnimationListener(ComposableAnimationListener(onEnd = { _: Animation?, _: View? -> bottomBar.visibility = View.VISIBLE }))
+        slideUp.setAnimationListener(ComposableAnimationListener(onEnd = { _: Animation?, _: View? -> bar.visibility = View.VISIBLE }))
         val slideDown = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_down_topbar)
-        slideDown.setAnimationListener(ComposableAnimationListener(onEnd = { _: Animation?, _: View? -> scrollView.visibility = View.VISIBLE }))
+        slideDown.setAnimationListener(ComposableAnimationListener(onEnd = { _: Animation?, _: View? -> scrollView_chipgroup.visibility = View.VISIBLE }))
 
-        if (mapping != null && bottomBar.visibility == View.INVISIBLE && scrollView.visibility == View.INVISIBLE) {
-            bottomBar.startAnimation(slideUp)
-            scrollView.startAnimation(slideDown)
+        if (mapping != null && bar.visibility == View.INVISIBLE && scrollView_chipgroup.visibility == View.INVISIBLE) {
+            bar.startAnimation(slideUp)
+            scrollView_chipgroup.startAnimation(slideDown)
         }
     }
 
     private fun hideUi() {
         val slideUp = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_up_topbar)
-        slideUp.setAnimationListener(ComposableAnimationListener(onEnd = { _: Animation?, _: View? -> scrollView.visibility = View.INVISIBLE }))
+        slideUp.setAnimationListener(ComposableAnimationListener(onEnd = { _: Animation?, _: View? -> scrollView_chipgroup.visibility = View.INVISIBLE }))
         val slideDown = AnimationUtils.loadAnimation(applicationContext, R.anim.slide_down_bottombar)
-        slideDown.setAnimationListener(ComposableAnimationListener(onEnd = { _: Animation?, _: View? -> bottomBar.visibility = View.INVISIBLE }))
+        slideDown.setAnimationListener(ComposableAnimationListener(onEnd = { _: Animation?, _: View? -> bar.visibility = View.INVISIBLE }))
 
         if (loadedFiles == 0) return
-        if (mapping != null && layoutManager.findLastCompletelyVisibleItemPosition() < adapter!!.itemCount -1
-            && bottomBar.visibility == View.VISIBLE && scrollView.visibility == View.VISIBLE) {
-            bottomBar.startAnimation(slideDown)
-            scrollView.startAnimation(slideUp)
+        if (mapping != null && (recyclerview_main.layoutManager as LinearLayoutManager).findLastCompletelyVisibleItemPosition() < adapter!!.itemCount -1
+            && bar.visibility == View.VISIBLE && scrollView_chipgroup.visibility == View.VISIBLE) {
+            bar.startAnimation(slideDown)
+            scrollView_chipgroup.startAnimation(slideUp)
         }
     }
 
@@ -453,10 +428,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun goForward(_clickedChip : Chip) {
-        this.clickedChip = _clickedChip
+        clickedChip = _clickedChip
 
-        for (i in 0..chipGroup.childCount) {
-            val chip : Chip = chipGroup.findViewById(i) ?: return
+        for (i in 0..chipgroup_folders.childCount) {
+            val chip : Chip = chipgroup_folders.findViewById(i) ?: return
             val fadeOut = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_out)
 
             fadeOut.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view: View? ->
@@ -465,17 +440,17 @@ class MainActivity : AppCompatActivity() {
             }))
             chip.postDelayed({ chip.startAnimation(fadeOut) }, i * 50L)
 
-            if (i == chipGroup.childCount -1)
+            if (i == chipgroup_folders.childCount -1)
                 lastChip = chip
         }
     }
 
     private fun goBack() {
-        if (scrollView.visibility != View.VISIBLE)
+        if (scrollView_chipgroup.visibility != View.VISIBLE)
             navigate(false)
         else {
-            for (i in 0..chipGroup.childCount) {
-                val chip : Chip = chipGroup.findViewById(i) ?: return
+            for (i in 0..chipgroup_folders.childCount) {
+                val chip : Chip = chipgroup_folders.findViewById(i) ?: return
                 val fadeOut = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_out)
 
                 fadeOut.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view: View? ->
@@ -484,7 +459,7 @@ class MainActivity : AppCompatActivity() {
                 }))
                 chip.postDelayed({ chip.startAnimation(fadeOut) }, i * 50L)
 
-                if (i == chipGroup.childCount -1)
+                if (i == chipgroup_folders.childCount -1)
                     lastChip = chip
             }
         }
@@ -496,25 +471,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun navigate(direction : Boolean?) = CoroutineScope(Dispatchers.Main + Job()).launch {
-        emptyLayout.animate().alpha(0f).setDuration(125).withEndAction{
-            emptyLayout.visibility = View.INVISIBLE; emptyLayout.alpha = 1f
+        this@MainActivity.linearLayout_no_result.animate().alpha(0f).setDuration(125).withEndAction{
+            this@MainActivity.linearLayout_no_result.visibility = View.INVISIBLE
+            this@MainActivity.linearLayout_no_result.alpha = 1f
         }.start()
-        recyclerView.animate().alpha(0f).setDuration(125).withEndAction{
-            recyclerView.visibility = View.INVISIBLE; recyclerView.alpha = 1f
+        recyclerview_main.animate().alpha(0f).setDuration(125).withEndAction{
+            recyclerview_main.visibility = View.INVISIBLE; recyclerview_main.alpha = 1f
         }.start()
-        progressBar.animate().alpha(1f).setDuration(125)
+        this@MainActivity.progress_bar.animate().alpha(1f).setDuration(125)
             .withStartAction{
-                progressBar.visibility = View.VISIBLE
+                this@MainActivity.progress_bar.visibility = View.VISIBLE
             }.withEndAction{
-                chipGroup.removeAllViews()
+                chipgroup_folders.removeAllViews()
                 if (direction != null) {
                     actualFolder = if (direction) findFolder(clickedChip?.text)!!
                     else actualFolder?.parent?.copy()
                 }
 
                 loadedFiles = 0
-                for (i in 0 until recyclerView.childCount) {
-                    val holder = recyclerView.getChildViewHolder(recyclerView.getChildAt(i))
+                for (i in 0 until recyclerview_main.childCount) {
+                    val holder = recyclerview_main.getChildViewHolder(recyclerview_main.getChildAt(i))
                     if (holder is VideoViewHolder) holder.recycleView()
                     if (holder is ImageViewHolder) holder.recycleView()
                 }
@@ -560,10 +536,10 @@ class MainActivity : AppCompatActivity() {
         if (file.type != "imageView" && file.type != "videoView") return
 
         popupDismissed = false
-        bottomBar.clearAnimation()
-        scrollView.clearAnimation()
-        bottomBar.visibility = View.INVISIBLE
-        scrollView.visibility = View.INVISIBLE
+        bar.clearAnimation()
+        scrollView_chipgroup.clearAnimation()
+        bar.visibility = View.INVISIBLE
+        scrollView_chipgroup.visibility = View.INVISIBLE
 
         when {
             file.type == "imageView" -> fullScreen = FullScreenImage(applicationContext, view, file)
@@ -581,9 +557,9 @@ class MainActivity : AppCompatActivity() {
 
         fullScreen!!.setOnDismissListener { popupDismissed = true
             fullScreen = null
-            if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
-                bottomBar.visibility = View.VISIBLE
-                scrollView.visibility = View.VISIBLE
+            if ((recyclerview_main.layoutManager as LinearLayoutManager).findFirstCompletelyVisibleItemPosition() == 0) {
+                bar.visibility = View.VISIBLE
+                scrollView_chipgroup.visibility = View.VISIBLE
             }
         }
 

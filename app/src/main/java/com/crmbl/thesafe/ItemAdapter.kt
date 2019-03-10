@@ -1,6 +1,5 @@
 package com.crmbl.thesafe
 
-import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,7 +10,6 @@ import com.crmbl.thesafe.viewHolders.*
 
 
 class ItemAdapter(
-    private val context: Context,
     private val dataSource : MutableList<File>,
     private val videoListener: VideoViewHolder.VideoViewHolderListener,
     private val imageListener: ImageViewHolder.ImageViewHolderListener,
@@ -133,7 +131,7 @@ class ItemAdapter(
 
     private fun setAnimation(itemView: View, position: Int) {
         if (position > lastPosition) {
-            val animation: Animation = AnimationUtils.loadAnimation(context, R.anim.item_animation_fall_down)
+            val animation: Animation = AnimationUtils.loadAnimation(itemView.context, R.anim.item_animation_fall_down)
             itemView.startAnimation(animation)
             lastPosition = position
         }

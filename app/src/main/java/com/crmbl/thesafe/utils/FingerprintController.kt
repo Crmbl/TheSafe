@@ -1,4 +1,4 @@
-package com.crmbl.thesafe
+package com.crmbl.thesafe.utils
 
 import androidx.core.hardware.fingerprint.FingerprintManagerCompat
 import androidx.core.os.CancellationSignal
@@ -6,7 +6,8 @@ import androidx.core.os.CancellationSignal
 
 class FingerprintController(
     private val fingerprintManager: FingerprintManagerCompat,
-    private val callback: Callback) : FingerprintManagerCompat.AuthenticationCallback() {
+    private val callback: Callback
+) : FingerprintManagerCompat.AuthenticationCallback() {
 
     private var cancellationSignal: CancellationSignal? = null
     private var selfCancelled = false

@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <application
             android:allowBackup="true"
             android:icon="@mipmap/ic_launcher"
@@ -22,5 +23,6 @@
         </activity>
         <activity android:name=".SettingActivity" />
         <activity android:name=".MainActivity" android:theme="@style/NoTitleActivityStyle" />
+        <service android:name=".utils.VideoService" />
     </application>
 </manifest>

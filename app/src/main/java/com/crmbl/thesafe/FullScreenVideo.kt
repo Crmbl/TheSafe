@@ -18,7 +18,12 @@ import android.os.Handler
 import com.crmbl.thesafe.listeners.*
 import com.google.android.exoplayer2.Player
 import android.animation.ObjectAnimator
+import android.content.ComponentName
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.IBinder
 import com.crmbl.thesafe.utils.CryptoUtil
+import com.crmbl.thesafe.utils.VideoService
 import com.google.android.exoplayer2.ui.TimeBar
 import com.google.android.exoplayer2.upstream.DataSource
 import kotlinx.android.synthetic.main.video_fullscreen.view.*
@@ -52,6 +57,15 @@ class FullScreenVideo(mContext: Context, v: View, file: File) :
     private var isRotating: Boolean = false
     var isScaling: Boolean = false
 
+    private val connection = object : ServiceConnection {
+        override fun onServiceDisconnected(name: ComponentName?) {}
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            if (service is VideoService.VideoServiceBinder) {
+                //view.video.player = service.getExoPlayerInstance()
+            }
+        }
+    }
+
     init {
 
         //region init variables
@@ -66,8 +80,9 @@ class FullScreenVideo(mContext: Context, v: View, file: File) :
         val player = ExoPlayerFactory.newSimpleInstance(mContext, DefaultTrackSelector())
         player?.volume = 1f
         player?.playWhenReady = true
-        view.video.player = player
+
         view.video.hideController()
+        view.video.player = player
 
         timeoutHandler = Handler()
         interactionTimeoutRunnable = Runnable { if (player?.playWhenReady!!) view.controller_layout.visibility = View.INVISIBLE }
@@ -93,6 +108,7 @@ class FullScreenVideo(mContext: Context, v: View, file: File) :
         view.controller_pause.setOnClickListener { pauseVideo() }
         view.controller_play.setOnClickListener { playVideo() }
         view.controller_rotate.setOnClickListener { rotateVideo() }
+        view.controller_background.setOnClickListener { playInBackground() }
         view.controller_progress.addListener(progressListener)
         view.rl_custom_layout.setOnTouchListener(ComposableTouchListener { _, event -> onTouchFrame(event!!) })
         view.video.setOnTouchListener(ComposableTouchListener { _, event -> onTouchVideo(event!!) })
@@ -187,6 +203,11 @@ class FullScreenVideo(mContext: Context, v: View, file: File) :
             } else delayMs = 800
             updateHandler?.postDelayed(updateProgressAction, delayMs)
         }
+    }
+
+    private fun playInBackground() {
+        /*val intent = Intent(view.context, VideoService::class.java)
+        bindService(intent, connection, Context.BIND_AUTO_CREATE)*/
     }
 
     private fun rotateVideo() {
@@ -385,6 +406,7 @@ class FullScreenVideo(mContext: Context, v: View, file: File) :
         view.controller_rotate.setOnClickListener(null)
         view.video.setOnTouchListener(null)
         view.rl_custom_layout.setOnTouchListener(null)
+        view.controller_background.setOnClickListener(null)
 
         (view.video.player as SimpleExoPlayer).removeListener(listener)
         (view.video.player as SimpleExoPlayer).setVideoListener(null)
