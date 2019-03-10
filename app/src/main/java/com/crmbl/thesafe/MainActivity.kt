@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.ActivityOptions
 import android.content.*
 import android.os.Bundle
+import android.os.IBinder
 import android.transition.Fade
 import android.util.TypedValue
 import android.view.MotionEvent
@@ -22,6 +23,7 @@ import com.beust.klaxon.Klaxon
 import com.crmbl.thesafe.listeners.ComposableAnimationListener
 import com.crmbl.thesafe.listeners.ComposableTransitionListener
 import com.crmbl.thesafe.utils.CryptoUtil
+import com.crmbl.thesafe.utils.VideoService
 import com.crmbl.thesafe.viewHolders.ImageViewHolder
 import com.crmbl.thesafe.viewHolders.ImageViewHolder.ImageViewHolderListener
 import com.crmbl.thesafe.viewHolders.ScrollUpViewHolder
@@ -58,6 +60,15 @@ class MainActivity : AppCompatActivity() {
     private var videoListener: VideoViewHolderListener? = null
     private var imageListener: ImageViewHolderListener? = null
     private var scrollUpListener: ScrollUpViewHolderListener? = null
+
+    private val connection = object : ServiceConnection {
+        override fun onServiceDisconnected(name: ComponentName?) {}
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            if (service is VideoService.VideoServiceBinder) {
+                //view.video.player = service.getExoPlayerInstance()
+            }
+        }
+    }
 
     //region override methods
 
@@ -147,17 +158,12 @@ class MainActivity : AppCompatActivity() {
         imageview_go_settings.setOnClickListener {goSettings()}
 
         videoListener = object : VideoViewHolderListener {
-            override fun onFullScreenButtonClick(view: View, item: File) {
-                showPopup(view, item)
-            }
+            override fun onFullScreenButtonClick(view: View, item: File) { showPopup(view, item) }
+            override fun onBackgroundButtonClick(view: View, item: File) { runInBackground(view, item) }
         }
-
         imageListener = object: ImageViewHolderListener {
-            override fun onDoubleTap(view: View, item: File) {
-                showPopup(view, item)
-            }
+            override fun onDoubleTap(view: View, item: File) { showPopup(view, item) }
         }
-
         scrollUpListener = object: ScrollUpViewHolder.ScrollUpViewHolderListener {
             override fun onClick() {
                 recyclerview_main.layoutManager!!.scrollToPosition(0)
@@ -530,9 +536,7 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this@MainActivity).toBundle())
     }
 
-    //endregion private methods
-
-    fun showPopup(view: View, file: File) {
+    private fun showPopup(view: View, file: File) {
         if (file.type != "imageView" && file.type != "videoView") return
 
         popupDismissed = false
@@ -579,4 +583,11 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
+
+    //TODO implement run in background service
+    private fun runInBackground(view: View, item: File) {
+        android.util.Log.d("TEST", "TEST")
+    }
+
+    //endregion private methods
 }

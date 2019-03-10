@@ -30,6 +30,7 @@ class VideoViewHolder(itemView: View, private val _listener: VideoViewHolderList
 
     interface VideoViewHolderListener {
         fun onFullScreenButtonClick(view: View, item: File)
+        fun onBackgroundButtonClick(view: View, item: File)
     }
 
     private var isRecycling: Boolean = false
@@ -44,6 +45,9 @@ class VideoViewHolder(itemView: View, private val _listener: VideoViewHolderList
     @SuppressLint("ClickableViewAccessibility")
     fun bind(file : File) {
         //region init vars
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
+            itemView.controller_background.visibility = View.VISIBLE
 
         val splitedName = file.originName.split('.')
         itemView.textview_title.text = splitedName.first()
@@ -74,6 +78,7 @@ class VideoViewHolder(itemView: View, private val _listener: VideoViewHolderList
         videoListener = _listener
         itemView.controller_pause.setOnClickListener { pauseVideo() }
         itemView.controller_play.setOnClickListener { playVideo() }
+        itemView.controller_background.setOnClickListener { videoListener!!.onBackgroundButtonClick(itemView, file)}
         itemView.controller_fullscreen.setOnClickListener {
             pauseVideo()
             videoListener!!.onFullScreenButtonClick(itemView, file)
@@ -199,6 +204,7 @@ class VideoViewHolder(itemView: View, private val _listener: VideoViewHolderList
         itemView.controller_pause.setOnClickListener(null)
         itemView.controller_play.setOnClickListener(null)
         itemView.controller_fullscreen.setOnClickListener(null)
+        itemView.controller_background.setOnClickListener(null)
         itemView.videoView.setOnTouchListener(null)
         itemView.controller_progress.removeListener(progressListener)
         updateHandler?.removeCallbacks(updateProgressAction)

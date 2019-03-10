@@ -128,21 +128,6 @@
                      android:elevation="5dp"
                      style="@style/ExoMediaButton.Play"/>
 
-        <ImageButton android:id="@+id/controller_background"
-                     android:layout_alignParentEnd="true"
-                     android:layout_alignParentBottom="true"
-                     android:layout_marginBottom="145dp"
-                     android:layout_marginEnd="10dp"
-                     android:layout_marginStart="0dp"
-                     android:layout_width="45dp"
-                     android:layout_height="45dp"
-                     android:layout_gravity="center"
-                     android:src="@drawable/ic_headset_white_24dp"
-                     android:contentDescription="@string/mute_button"
-                     android:background="@drawable/bg_exo_circle"
-                     android:elevation="5dp"
-                     style="@style/ExoMediaButton.Play"/>
-
         <LinearLayout android:paddingBottom="1dp"
                 android:background="@color/colorItemBackgroundOpacity"
                 android:layout_alignParentBottom="true"

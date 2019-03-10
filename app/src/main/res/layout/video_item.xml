@@ -67,7 +67,7 @@
                          style="@style/ExoMediaButton.Pause"/>
         </FrameLayout>
 
-        <LinearLayout
+        <LinearLayout android:id="@+id/bottom_linear_layout"
                 android:background="@color/colorItemBackgroundOpacity"
                 android:layout_alignParentBottom="true"
                 android:layout_width="match_parent"
@@ -88,15 +88,32 @@
                      android:paddingBottom="5dp"
                      tools:ignore="RtlHardcoded"/>
 
-            <ImageButton android:id="@+id/controller_fullscreen"
-                         android:layout_width="wrap_content"
-                         android:layout_height="wrap_content"
-                         android:layout_gravity="center"
-                         android:layout_marginRight="8dp"
-                         android:background="@android:color/transparent"
-                         android:src="@drawable/ic_fullscreen_white_24dp"
-                         tools:ignore="RtlHardcoded"/>
+            <ImageButton
+                    android:id="@+id/controller_fullscreen"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginRight="8dp"
+                    android:background="@android:color/transparent"
+                    android:src="@drawable/ic_fullscreen_white_24dp"
+                    tools:ignore="RtlHardcoded"/>
         </LinearLayout>
+
+        <ImageButton android:id="@+id/controller_background"
+                     android:visibility="gone"
+                     android:layout_alignParentEnd="true"
+                     android:layout_marginTop="5dp"
+                     android:layout_marginBottom="5dp"
+                     android:layout_marginEnd="5dp"
+                     android:layout_marginStart="0dp"
+                     android:layout_width="45dp"
+                     android:layout_height="45dp"
+                     android:layout_gravity="center"
+                     android:src="@drawable/ic_headset_white_24dp"
+                     android:contentDescription="@string/mute_button"
+                     android:background="@drawable/bg_exo_circle"
+                     android:elevation="5dp"
+                     style="@style/ExoMediaButton.Play"/>
     </RelativeLayout>
 
     <LinearLayout android:id="@+id/bottom_layout"
