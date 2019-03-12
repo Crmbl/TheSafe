@@ -1,10 +1,10 @@
 package com.crmbl.thesafe
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.app.ActivityOptions
 import android.content.*
 import android.os.Bundle
-import android.os.IBinder
 import android.transition.Fade
 import android.util.TypedValue
 import android.view.MotionEvent
@@ -23,7 +23,6 @@ import com.beust.klaxon.Klaxon
 import com.crmbl.thesafe.listeners.ComposableAnimationListener
 import com.crmbl.thesafe.listeners.ComposableTransitionListener
 import com.crmbl.thesafe.utils.CryptoUtil
-import com.crmbl.thesafe.utils.VideoService
 import com.crmbl.thesafe.viewHolders.ImageViewHolder
 import com.crmbl.thesafe.viewHolders.ImageViewHolder.ImageViewHolderListener
 import com.crmbl.thesafe.viewHolders.ScrollUpViewHolder
@@ -34,8 +33,13 @@ import com.github.ybq.android.spinkit.style.CubeGrid
 import com.google.android.material.chip.Chip
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.*
+import android.content.Intent
+import com.crmbl.thesafe.utils.VideoService
+import com.google.android.exoplayer2.util.Util
+
 
 //TODO improve scrolling smoothness !
+@Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
     private val loadLimit : Int = 5
@@ -60,16 +64,6 @@ class MainActivity : AppCompatActivity() {
     private var videoListener: VideoViewHolderListener? = null
     private var imageListener: ImageViewHolderListener? = null
     private var scrollUpListener: ScrollUpViewHolderListener? = null
-
-    //TODO find use for this ?
-    private val connection = object : ServiceConnection {
-        override fun onServiceDisconnected(name: ComponentName?) {
-            android.util.Log.d("TEST", "SERVICE DISCONNECTED")
-        }
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            android.util.Log.d("TEST", "SERVICE CONNECTED")
-        }
-    }
 
     //region override methods
 
@@ -585,10 +579,26 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    //TODO if running and user click fullscreen, pause the playback ?
     private fun runInBackground(item: File) {
+        //TODO check if service is already running ?
         val intent = Intent(this, VideoService::class.java)
-        intent.putExtra(VideoService.VIDEO_PATH, item.path)
-        bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        if (isServiceRunningInForeground(applicationContext, VideoService::class.java))
+            intent.action = VideoService.STOPFOREGROUND_ACTION
+        else
+            intent.putExtra(VideoService.VIDEO_PATH, item.path)
+
+        Util.startForegroundService(this, intent)
+    }
+
+    private fun isServiceRunningInForeground(context: Context, serviceClass: Class<VideoService>): Boolean {
+        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        for (service: ActivityManager.RunningServiceInfo in manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.name == service.service.className) {
+                if (service.foreground) return true
+            }
+        }
+        return false
     }
 
     //endregion private methods
