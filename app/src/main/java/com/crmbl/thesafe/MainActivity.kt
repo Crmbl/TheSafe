@@ -28,6 +28,7 @@ import com.crmbl.thesafe.viewHolders.ImageViewHolder.ImageViewHolderListener
 import com.crmbl.thesafe.viewHolders.ScrollUpViewHolder
 import com.crmbl.thesafe.viewHolders.VideoViewHolder
 import com.crmbl.thesafe.viewHolders.VideoViewHolder.VideoViewHolderListener
+import com.crmbl.thesafe.utils.VideoService.VideoServiceListener
 import com.crmbl.thesafe.viewHolders.ScrollUpViewHolder.ScrollUpViewHolderListener
 import com.github.ybq.android.spinkit.style.CubeGrid
 import com.google.android.material.chip.Chip
@@ -37,8 +38,8 @@ import android.content.Intent
 import com.crmbl.thesafe.utils.VideoService
 import com.google.android.exoplayer2.util.Util
 
-
-//TODO improve scrolling smoothness !
+//TODO improve scrolling smoothness ?
+//TODO improve the way the json is parsed ?
 @Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
@@ -55,6 +56,7 @@ class MainActivity : AppCompatActivity() {
     private var lastChip : Chip? = null
     private var adapter : ItemAdapter? = null
     private var fullScreen: PopupWindow? = null
+    private var notificationItem: File? = null
     private var query: String = ""
     private var imageFileExtensions: Array<String> = arrayOf("gif", "png", "jpg", "jpeg", "bmp", "pdf")
     private lateinit var cryptedMapping : java.io.File
@@ -63,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     private var broadcastReceiver: BroadcastReceiver? = null
     private var videoListener: VideoViewHolderListener? = null
     private var imageListener: ImageViewHolderListener? = null
+    private var videoServiceListener: VideoServiceListener? = null
     private var scrollUpListener: ScrollUpViewHolderListener? = null
 
     //region override methods
@@ -154,7 +157,7 @@ class MainActivity : AppCompatActivity() {
 
         videoListener = object : VideoViewHolderListener {
             override fun onFullScreenButtonClick(view: View, item: File) { showPopup(view, item) }
-            override fun onBackgroundButtonClick(view: View, item: File) { runInBackground(item) }
+            override fun onBackgroundButtonClick(view: View, item: File) { runInForeground(item) }
         }
         imageListener = object: ImageViewHolderListener {
             override fun onDoubleTap(view: View, item: File) { showPopup(view, item) }
@@ -163,6 +166,14 @@ class MainActivity : AppCompatActivity() {
             override fun onClick() {
                 recyclerview_main.layoutManager!!.scrollToPosition(0)
                 recyclerview_main.tag = "smoothScrolling"
+            }
+        }
+        videoServiceListener = object: VideoService.VideoServiceListener {
+            override fun onServiceDestroyed() {
+                if (notificationItem != null) {
+                    runInForeground(notificationItem!!)
+                    notificationItem = null
+                }
             }
         }
 
@@ -542,7 +553,10 @@ class MainActivity : AppCompatActivity() {
 
         when {
             file.type == "imageView" -> fullScreen = FullScreenImage(applicationContext, view, file)
-            file.type == "videoView" -> fullScreen = FullScreenVideo(applicationContext, view, file)
+            file.type == "videoView" -> {
+                pauseForegroundService()
+                fullScreen = FullScreenVideo(applicationContext, view, file)
+            }
         }
 
         val fadeIn = Fade(Fade.MODE_IN)
@@ -579,16 +593,27 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    //TODO if running and user click fullscreen, pause the playback ?
-    private fun runInBackground(item: File) {
-        //TODO check if service is already running ?
-        val intent = Intent(this, VideoService::class.java)
-        if (isServiceRunningInForeground(applicationContext, VideoService::class.java))
+    private fun runInForeground(item: File) {
+        if (isServiceRunningInForeground(applicationContext, VideoService::class.java)) {
+            val intent = Intent(this, VideoService::class.java)
             intent.action = VideoService.STOPFOREGROUND_ACTION
-        else
-            intent.putExtra(VideoService.VIDEO_PATH, item.path)
+            Util.startForegroundService(this, intent)
+            notificationItem = item
+        }
+        else {
+            val intent = Intent(this, VideoService::class.java)
+            VideoService.setMediaPath(item.path)
+            VideoService.setVideoServiceListener(videoServiceListener!!)
+            Util.startForegroundService(this, intent)
+        }
+    }
 
-        Util.startForegroundService(this, intent)
+    private fun pauseForegroundService() {
+        if (isServiceRunningInForeground(applicationContext, VideoService::class.java)) {
+            val intent = Intent(this, VideoService::class.java)
+            intent.action = VideoService.PAUSEFOREGROUND_ACTION
+            Util.startForegroundService(this, intent)
+        }
     }
 
     private fun isServiceRunningInForeground(context: Context, serviceClass: Class<VideoService>): Boolean {

@@ -10,10 +10,9 @@ import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ui.PlayerNotificationManager.BitmapCallback
 import android.graphics.Bitmap
 import android.app.PendingIntent
-import android.graphics.BitmapFactory
 import android.media.session.MediaSession
 import android.support.v4.media.session.MediaSessionCompat
-import androidx.core.content.ContextCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import com.crmbl.thesafe.R
 import com.google.android.exoplayer2.ui.PlayerNotificationManager.MediaDescriptionAdapter
 import com.google.android.exoplayer2.source.ExtractorMediaSource
@@ -26,14 +25,29 @@ import com.google.android.exoplayer2.upstream.DataSpec
 import java.io.File
 import java.io.IOException
 
-
+//TODO change icon to the app Logo !
 class VideoService: Service() {
     companion object {
-        const val VIDEO_PATH = "video_path"
         const val PLAYBACK_CHANNEL_ID = "thesafe_playback_channel"
         const val PLAYBACK_NOTIFICATION_ID = 1
         const val SESSION_CHANNEL = "thesafe_media_session"
         const val STOPFOREGROUND_ACTION = "stop_service"
+        const val PAUSEFOREGROUND_ACTION = "pause_service"
+
+        private var mediaPath: String? = null
+        private var videoServiceListener: VideoServiceListener? = null
+
+        fun setMediaPath(path: String) {
+            mediaPath = path
+        }
+        fun setVideoServiceListener(listener: VideoServiceListener) {
+            if (videoServiceListener == null)
+                videoServiceListener = listener
+        }
+    }
+
+    interface VideoServiceListener {
+        fun onServiceDestroyed()
     }
 
     private var player: SimpleExoPlayer? = null
@@ -50,17 +64,8 @@ class VideoService: Service() {
         val context = this
 
         player = ExoPlayerFactory.newSimpleInstance(context, DefaultTrackSelector())
-
-        val theSafeFolder = ContextCompat.getExternalFilesDirs(applicationContext, null)
-            .last{ f -> f.name == "files" && f.isDirectory }
-            .listFiles().first{ f -> f.name == "Download" && f.isDirectory }
-            .listFiles().first{ f -> f.name == ".blob" && f.isDirectory && f.isHidden }
-        var file : File? = null
-        for (_file in theSafeFolder.listFiles()) {
-            if (CryptoUtil.decipher(_file.nameWithoutExtension) == "big_buck_bunny") {file = _file; break}
-        }
-
-        val decrypted = CryptoUtil.decrypt(java.io.File(file!!.path))
+        val file = File(mediaPath)
+        val decrypted = CryptoUtil.decrypt(file)
         val byteArrayDataSource = ByteArrayDataSource(decrypted)
         val mediaByteUri = UriByteDataHelper().getUri(decrypted!!)
         val dataSpec = DataSpec(mediaByteUri)
@@ -74,17 +79,13 @@ class VideoService: Service() {
         playerNotificationManager = PlayerNotificationManager.createWithNotificationChannel(
             context, PLAYBACK_CHANNEL_ID, R.string.playback_name, PLAYBACK_NOTIFICATION_ID,
             object : MediaDescriptionAdapter {
+                override fun createCurrentContentIntent(player: Player): PendingIntent? { return null }
+                override fun getCurrentLargeIcon(player: Player, callback: BitmapCallback): Bitmap? { return null }
+                override fun getCurrentContentText(player: Player): String? {
+                    return CryptoUtil.decipher(file.extension)
+                }
                 override fun getCurrentContentTitle(player: Player): String {
                     return file.nameWithoutExtension
-                }
-                override fun createCurrentContentIntent(player: Player): PendingIntent? {
-                    return null
-                }
-                override fun getCurrentContentText(player: Player): String? {
-                    return "Description of the file"
-                }
-                override fun getCurrentLargeIcon(player: Player, callback: BitmapCallback): Bitmap? {
-                    return BitmapFactory.decodeResource(resources, R.drawable.ic_headset_white_24dp)
                 }
             }
         )
@@ -96,18 +97,19 @@ class VideoService: Service() {
                 stopSelf()
             }
         })
-        playerNotificationManager!!.setColorized(true)
-        //TODO find better color
+
+        playerNotificationManager!!.setColorized(false)
         playerNotificationManager!!.setColor(resources.getColor(R.color.colorAccent, theme))
         playerNotificationManager!!.setUseNavigationActions(false)
-        playerNotificationManager!!.setUseChronometer(true)
-        playerNotificationManager!!.setUsePlayPauseActions(true)
+        playerNotificationManager!!.setSmallIcon(R.drawable.ic_headset_white_24dp)
         playerNotificationManager!!.setPlayer(player)
 
         mediaSession = MediaSession(context, SESSION_CHANNEL)
         mediaSession!!.isActive = true
+
         playerNotificationManager!!.setMediaSessionToken(MediaSessionCompat.Token.fromToken(mediaSession!!.sessionToken))
         mediaSessionConnector = MediaSessionConnector(MediaSessionCompat.fromMediaSession(context, mediaSession))
+        mediaSessionConnector!!.mediaSession!!.setRepeatMode(PlaybackStateCompat.REPEAT_MODE_ALL)
         mediaSessionConnector!!.setPlayer(player, null)
     }
 
@@ -117,14 +119,20 @@ class VideoService: Service() {
         playerNotificationManager!!.setPlayer(null)
         player!!.release()
         player = null
+        mediaPath = null
 
+        videoServiceListener?.onServiceDestroyed()
+        videoServiceListener = null
         super.onDestroy()
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        if (intent.action == STOPFOREGROUND_ACTION) {
-            stopForeground(true)
-            stopSelf()
+        when {
+            intent.action == STOPFOREGROUND_ACTION -> {
+                stopForeground(true)
+                stopSelf()
+            }
+            intent.action == PAUSEFOREGROUND_ACTION -> player!!.playWhenReady = false
         }
 
         return Service.START_STICKY

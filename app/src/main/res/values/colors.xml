@@ -3,10 +3,10 @@
     <color name="colorPrimary">#6c5ce7</color>
     <color name="colorPrimaryDark">#6c5ce7</color>
     <color name="colorAccent">#ee5253</color>
+    <color name="colorError">#badc58</color>
     <color name="colorHint">#bbbb</color>
     <color name="colorHintOpacity">#4Dbbbbbb</color>
     <color name="colorHintAccent">#cccccc</color>
-    <color name="colorError">#badc58</color>
     <color name="colorEmphasis">#ffffff</color>
     <color name="colorBackground">#303030</color>
     <color name="colorItemBackground">#424242</color>

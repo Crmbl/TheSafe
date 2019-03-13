@@ -39,6 +39,12 @@ class ImageViewHolder(itemView: View, private val _listener: ImageViewHolderList
         params.addRule(RelativeLayout.BELOW, R.id.waiting_frame)
         itemView.bottom_layout.layoutParams = params
 
+        imageListener = _listener
+        gestureDetector = GestureDetector(itemView.context, ComposableGestureListener().onDoubleTap {
+            imageListener!!.onDoubleTap(itemView, file); true})
+        touchListener = ComposableTouchListener { _, event -> gestureDetector!!.onTouchEvent(event) ; true }
+        itemView.imageView.setOnTouchListener(touchListener)
+
         var decryptedStream : ByteArrayInputStream? = null
         CoroutineScope(Dispatchers.Main + Job()).launch {
             val deferred = async(Dispatchers.Default) {
@@ -57,12 +63,6 @@ class ImageViewHolder(itemView: View, private val _listener: ImageViewHolderList
                     itemView.imageView.setImageDrawable(BitmapDrawable(Resources.getSystem(), decryptedStream!!)) }
             }
         }
-
-        imageListener = _listener
-        gestureDetector = GestureDetector(itemView.context, ComposableGestureListener().onDoubleTap {
-            imageListener!!.onDoubleTap(itemView, file); true})
-        touchListener = ComposableTouchListener { _, event -> gestureDetector!!.onTouchEvent(event) ; true }
-        itemView.imageView.setOnTouchListener(touchListener)
     }
 
     fun clearAnimation() {
