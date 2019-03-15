@@ -25,7 +25,7 @@ import com.google.android.exoplayer2.upstream.DataSpec
 import java.io.File
 import java.io.IOException
 
-//TODO change icon to the app Logo !
+
 class VideoService: Service() {
     companion object {
         const val PLAYBACK_CHANNEL_ID = "thesafe_playback_channel"
@@ -101,7 +101,7 @@ class VideoService: Service() {
         playerNotificationManager!!.setColorized(false)
         playerNotificationManager!!.setColor(resources.getColor(R.color.colorAccent, theme))
         playerNotificationManager!!.setUseNavigationActions(false)
-        playerNotificationManager!!.setSmallIcon(R.drawable.ic_headset_white_24dp)
+        playerNotificationManager!!.setSmallIcon(R.drawable.ic_pepper_icon_small)
         playerNotificationManager!!.setPlayer(player)
 
         mediaSession = MediaSession(context, SESSION_CHANNEL)

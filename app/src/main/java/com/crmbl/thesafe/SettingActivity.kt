@@ -93,10 +93,6 @@ class SettingActivity : AppCompatActivity() {
             .last{ f -> f.name == "files" && f.isDirectory }
             .listFiles().first{ f -> f.name == "Download" && f.isDirectory }
             .listFiles().first{ f -> f.name == ".blob" && f.isDirectory && f.isHidden }
-
-        //TODO remove this !!!!
-        binding.viewModel?.settingSalt = "DJsW3hb95dqG3uQg"
-        binding.viewModel?.settingPassword = "99aXHaxXC76qsWUa"
     }
 
     private fun save() {

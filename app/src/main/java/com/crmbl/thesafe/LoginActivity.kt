@@ -33,7 +33,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.NoSuchPaddingException
 import javax.crypto.SecretKey
 
-//TODO add app Logo !
+
 class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
 
     private lateinit var binding : ActivityLoginBinding

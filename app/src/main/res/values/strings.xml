@@ -36,4 +36,5 @@
     <string name="volume_button">volume button</string>
     <string name="mute_button">mute button</string>
     <string name="playback_name">Audio</string>
+    <string name="the_safe">The Safe</string>
 </resources>
