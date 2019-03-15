@@ -38,8 +38,8 @@ import android.content.Intent
 import com.crmbl.thesafe.utils.VideoService
 import com.google.android.exoplayer2.util.Util
 
-//TODO improve scrolling smoothness ?
-//TODO improve the way the json is parsed ?
+//TODO improve scrolling smoothness ? ==> linked to todo below
+//TODO improve the way the json is parsed ? ==> YES, way too heavy with a lot of files
 @Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
