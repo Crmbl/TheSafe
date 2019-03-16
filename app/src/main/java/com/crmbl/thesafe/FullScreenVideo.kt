@@ -18,6 +18,7 @@ import android.os.Handler
 import com.crmbl.thesafe.listeners.*
 import com.google.android.exoplayer2.Player
 import android.animation.ObjectAnimator
+import android.media.session.PlaybackState
 import com.crmbl.thesafe.utils.CryptoUtil
 import com.google.android.exoplayer2.ui.TimeBar
 import com.google.android.exoplayer2.upstream.DataSource
@@ -83,7 +84,14 @@ class FullScreenVideo(mContext: Context, v: View, file: File) :
         gestureDetector = GestureDetector(mContext, ComposableGestureListener().onDoubleTap { toggleController() })
         scaleGestureDetector = ScaleGestureDetector(mContext, ComposableScaleGestureListener().onScale { detector -> scaleVideo(detector) })
         progressListener = ComposableTimeBarScrubListener(onStop = { _, position, _ -> seekVideo(position) })
-        listener = ComposablePlayerEventListener().onPlayerStateChanged { _, _ -> updateProgressBar() }
+        listener = ComposablePlayerEventListener().onPlayerStateChanged { _ , playbackState -> updateProgressBar()
+            if (playbackState == ExoPlayer.STATE_ENDED) {
+                showController()
+                view.controller_pause.visibility = View.GONE
+                view.controller_play.visibility = View.GONE
+                view.controller_replay.visibility = View.VISIBLE
+            }
+        }
 
         player?.addListener(listener)
         player?.addVideoListener(ComposableVideoListener().onRenderedFirstFrame { onFirstFrame() })
@@ -93,6 +101,7 @@ class FullScreenVideo(mContext: Context, v: View, file: File) :
         view.controller_volume.setOnClickListener { unMuteVideo() }
         view.controller_pause.setOnClickListener { pauseVideo() }
         view.controller_play.setOnClickListener { playVideo() }
+        view.controller_replay.setOnClickListener { replayVideo() }
         view.controller_rotate.setOnClickListener { rotateVideo() }
         view.controller_progress.addListener(progressListener)
         view.rl_custom_layout.setOnTouchListener(ComposableTouchListener { _, event -> onTouchFrame(event!!) })
@@ -145,6 +154,14 @@ class FullScreenVideo(mContext: Context, v: View, file: File) :
     private fun playVideo() {
         view.controller_play.visibility = View.GONE
         view.controller_pause.visibility = View.VISIBLE
+        view.video.player?.playWhenReady = true
+        hideController()
+    }
+
+    private fun replayVideo() {
+        view.controller_replay.visibility = View.GONE
+        view.controller_pause.visibility = View.VISIBLE
+        view.video.player?.seekToDefaultPosition()
         view.video.player?.playWhenReady = true
         hideController()
     }
@@ -226,6 +243,12 @@ class FullScreenVideo(mContext: Context, v: View, file: File) :
 
     private fun seekVideo(position: Long) {
         resetHandler()
+
+        if (view.video.player!!.playWhenReady)
+            view.controller_pause.visibility = View.VISIBLE
+        else
+            view.controller_play.visibility = View.VISIBLE
+        view.controller_replay.visibility = View.GONE
         view.video.player?.seekTo(position)
     }
 
@@ -384,6 +407,7 @@ class FullScreenVideo(mContext: Context, v: View, file: File) :
         view.controller_pause.setOnClickListener(null)
         view.controller_play.setOnClickListener(null)
         view.controller_rotate.setOnClickListener(null)
+        view.controller_replay.setOnClickListener(null)
         view.video.setOnTouchListener(null)
         view.rl_custom_layout.setOnTouchListener(null)
 

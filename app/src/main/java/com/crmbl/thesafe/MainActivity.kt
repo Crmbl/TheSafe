@@ -43,7 +43,7 @@ import com.google.android.exoplayer2.util.Util
 @Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
-    private val loadLimit : Int = 5
+    private val loadLimit : Int = 10
 
     private var loadedFiles : Int = 0
     private var isPaused : Boolean = true
@@ -303,7 +303,9 @@ class MainActivity : AppCompatActivity() {
 
         adapter = ItemAdapter(files!!, videoListener!!, imageListener!!, scrollUpListener!!)
         recyclerview_main.adapter = adapter
-        if (loadedFiles == actualFolderFiltered.count() && recyclerview_main.computeVerticalScrollRange() > recyclerview_main.height) {
+
+        val filesHeight = files!!.sumBy { f -> if (f.height.isNotEmpty()) f.height.toInt() else 0 }
+        if (loadedFiles == actualFolderFiltered.count() && filesHeight > recyclerview_main.height) {
             files?.add(File(type="scrollUp"))
             adapter?.notifyDataSetChanged()
         }

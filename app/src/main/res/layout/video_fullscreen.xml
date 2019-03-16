@@ -81,6 +81,17 @@
                          android:elevation="5dp"
                          android:background="@drawable/bg_exo_circle"
                          style="@style/ExoMediaButton.Pause"/>
+
+            <ImageButton android:id="@+id/controller_replay"
+                         android:visibility="gone"
+                         android:layout_width="75dp"
+                         android:layout_height="75dp"
+                         android:layout_gravity="center"
+                         android:contentDescription="@string/play_button"
+                         android:background="@drawable/bg_exo_circle"
+                         android:elevation="5dp"
+                         android:src="@drawable/exo_controls_repeat_all"
+                         style="@style/ExoMediaButton.Rewind"/>
         </FrameLayout>
 
         <FrameLayout
