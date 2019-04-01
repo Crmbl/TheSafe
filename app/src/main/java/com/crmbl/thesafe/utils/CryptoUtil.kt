@@ -1,5 +1,6 @@
 package com.crmbl.thesafe.utils
 
+import android.os.ParcelFileDescriptor
 import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
 import javax.crypto.spec.IvParameterSpec
@@ -43,7 +44,7 @@ class CryptoUtil {
             val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
             FileInputStream(inputFile).use { fileIn ->
                 val tmpByte = ByteArray(4)
-                fileIn.read(tmpByte, 0 , 4)
+                fileIn.read(tmpByte, 0, 4)
                 cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(pass32, "SHA1PRNG"), IvParameterSpec(pass16))
 
                 CipherInputStream(fileIn, cipher).use { cipherIn ->
@@ -53,6 +54,30 @@ class CryptoUtil {
                 }
             }
         }
+
+        // TESTING
+        fun decrypt(parcelFileDescriptor: ParcelFileDescriptor) : ByteArray? {
+            if (password.isEmpty() || salt.isEmpty())
+                throw Exception("The password/salt values cannot be empty for decrypt()")
+
+            val password = PasswordDeriveBytes(password, salt.toByteArray(Charsets.US_ASCII), "SHA1", 2)
+            val pass32: ByteArray = password.getBytes(32)
+            val pass16: ByteArray = password.getBytes(16)
+
+            val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+            FileInputStream(parcelFileDescriptor.fileDescriptor).use { fileIn ->
+                val tmpByte = ByteArray(4)
+                fileIn.read(tmpByte, 0, 4)
+                cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(pass32, "SHA1PRNG"), IvParameterSpec(pass16))
+
+                CipherInputStream(fileIn, cipher).use { cipherIn ->
+                    return ByteArrayInputStream(cipherIn.readBytes(), 0, toInt32(tmpByte, 0)).use { byteStream ->
+                        byteStream.readBytes()
+                    }
+                }
+            }
+        }
+        ///////////////
 
         private fun toInt32(bytes:ByteArray, index:Int):Int  {
             if (bytes.size != 4)

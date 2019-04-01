@@ -1,5 +1,6 @@
 package com.crmbl.thesafe
 
+import android.app.Activity
 import android.app.ActivityOptions
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -15,15 +16,20 @@ import com.crmbl.thesafe.databinding.ActivitySettingBinding
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
+import android.os.storage.StorageManager
+import android.os.storage.StorageVolume
 import android.transition.Fade
 import android.view.View
 import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
 import com.crmbl.thesafe.listeners.ComposableAnimationListener
 import com.crmbl.thesafe.listeners.ComposableTransitionListener
 import com.crmbl.thesafe.utils.CryptoUtil
 import com.crmbl.thesafe.viewModels.SettingViewModel
 import kotlinx.android.synthetic.main.activity_setting.*
+import java.io.BufferedOutputStream
 import java.io.File
+import java.io.OutputStream
 import java.util.*
 import kotlin.concurrent.schedule
 
@@ -35,12 +41,14 @@ class SettingActivity : AppCompatActivity() {
     private var goMain : Boolean = false
     private var validated : Boolean = false
 
+    private val externalRequest = 138
+
     private var broadcastReceiver: BroadcastReceiver? = null
     private lateinit var expand : Animation
     private lateinit var binding : ActivitySettingBinding
     private lateinit var fadeIn : Animation
     private lateinit var fadeOut : Animation
-    private lateinit var theSafeFolder : java.io.File
+    private lateinit var theSafeFolder : DocumentFile
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,11 +97,61 @@ class SettingActivity : AppCompatActivity() {
         setting_button_cancel.setOnClickListener{this.goMainActivity()}
         check_decrypt_button.setOnClickListener{this.check()}
 
-        theSafeFolder = ContextCompat.getExternalFilesDirs(applicationContext, null)
+        //TODO remove this !!!!
+        binding.viewModel?.settingSalt = "EsyQJ7keJK2nkVJ8"
+        binding.viewModel?.settingPassword = "3BVEnYwzN8eNTG8G"
+        //////////////////////////
+
+        if (requestForPermission())
+            setTheSafeFolder(contentResolver.persistedUriPermissions.first().uri)
+    }
+    ////////////////////TESTING
+    private fun requestForPermission(): Boolean {
+        if (contentResolver.persistedUriPermissions.any())
+            return true
+
+        val storageManager = getSystemService(Context.STORAGE_SERVICE) as StorageManager
+        val sdCard = storageManager.storageVolumes.firstOrNull { f -> !f.isPrimary }
+        val volume: StorageVolume = sdCard!!
+        volume.createAccessIntent(null).also { intent -> startActivityForResult(intent, externalRequest) }
+
+        return false
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        when (requestCode) {
+            externalRequest -> {
+                if (resultCode == Activity.RESULT_OK) {
+                    contentResolver.takePersistableUriPermission(data?.data!!, Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    setTheSafeFolder(data.data!!)
+                } else {
+                    throw Exception("The permission was not granted ! A problem occured.")
+                }
+                return
+            }
+        }
+    }
+
+    private fun setTheSafeFolder(uri: Uri) {
+        //Legacy code
+        /*theSafeFolder = ContextCompat.getExternalFilesDirs(applicationContext, null)
             .last{ f -> f.name == "files" && f.isDirectory }
             .listFiles().first{ f -> f.name == "Download" && f.isDirectory }
-            .listFiles().first{ f -> f.name == ".blob" && f.isDirectory && f.isHidden }
+            .listFiles().first{ f -> f.name == ".blob" && f.isDirectory && f.isHidden }*/
+
+        val wholeSD = DocumentFile.fromTreeUri(applicationContext, uri)
+        val tmpFolder = wholeSD?.findFile("TheSafe")
+        if (tmpFolder == null)
+            wholeSD?.createDirectory("TheSafe")
+
+        theSafeFolder = wholeSD?.findFile("TheSafe") as DocumentFile
+        if (theSafeFolder.exists() && theSafeFolder.isDirectory) {
+            val noMediaFile = theSafeFolder.findFile(".nomedia")
+            if (noMediaFile == null)
+                theSafeFolder.createFile("", ".nomedia")
+        }
     }
+    ////////////////////TESTING
 
     private fun save() {
         val viewModel : SettingViewModel = binding.viewModel!!
@@ -128,7 +186,7 @@ class SettingActivity : AppCompatActivity() {
     private fun check() {
         val viewModel : SettingViewModel = binding.viewModel!!
 
-        if (!theSafeFolder.isDirectory || !theSafeFolder.isHidden || theSafeFolder.name != ".blob") {
+        if (!theSafeFolder.isDirectory || theSafeFolder.name != "TheSafe") {
             textview_error.text = resources.getString(R.string.setting_decrypterror_message)
             textview_error.postDelayed({ textview_error.text = "" }, 1500)
             textview_error.startAnimation(expand)
@@ -137,10 +195,10 @@ class SettingActivity : AppCompatActivity() {
         else {
             CryptoUtil.password = viewModel.settingPassword
             CryptoUtil.salt = viewModel.settingSalt
-            var fileToTest : File? = null
+            var fileToTest : DocumentFile? = null
             var fileExt = ""
             for (file in theSafeFolder.listFiles()) {
-                fileExt = CryptoUtil.decipher(file.name).split('.')[1]
+                fileExt = CryptoUtil.decipher(file.name!!).split('.')[1]
                 if (fileExt == "jpg" || fileExt == "gif" || fileExt == "png") {
                     fileToTest = file
                     break
@@ -152,11 +210,20 @@ class SettingActivity : AppCompatActivity() {
                 textview_error.startAnimation(expand)
                 return
             } else {
-                val output = CryptoUtil.decrypt(fileToTest)
-                val testFile = File(theSafeFolder, "/testing.$fileExt")
-                testFile.writeBytes(output!!)
+                val parcelFileDescriptor = applicationContext.contentResolver.openFileDescriptor(fileToTest.uri, "r")
+                val output = CryptoUtil.decrypt(parcelFileDescriptor!!)
+                //val testFile = File(theSafeFolder, "/testing.$fileExt")
+                //val testFile = File(theSafeFolder.uri.path, "/testing.$fileExt")
+                val testFile = theSafeFolder.createFile("", "/testing.$fileExt")
+                //testFile.writeBytes(output!!)
 
-                imageview_checkup.setImageURI(Uri.fromFile(testFile))
+                val fos: OutputStream
+                fos = BufferedOutputStream(applicationContext.contentResolver.openOutputStream(testFile!!.uri, "w"))
+                fos.write(output!!)
+                fos.close()
+
+                //imageview_checkup.setImageURI(Uri.fromFile(testFile))
+                imageview_checkup.setImageURI(testFile.uri)
                 imageview_checkup.postDelayed({
                     imageview_checkup.setImageResource(R.drawable.ic_no_encryption_background_24dp)
                     testFile.delete()
