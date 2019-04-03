@@ -38,8 +38,7 @@ import android.content.Intent
 import com.crmbl.thesafe.utils.VideoService
 import com.google.android.exoplayer2.util.Util
 
-//TODO improve scrolling smoothness ? ==> linked to todo below
-//TODO improve the way the json is parsed ? ==> YES, way too heavy with a lot of files
+
 @Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
@@ -49,7 +48,7 @@ class MainActivity : AppCompatActivity() {
     private var isPaused : Boolean = true
     private var goSettings : Boolean = false
     private var popupDismissed : Boolean = true
-    private var mapping : Folder? = null
+    private var mapping : List<Folder>? = null
     private var clickedChip : Chip? = null
     private var actualFolder : Folder? = null
     private var files : MutableList<File>? = null
@@ -231,7 +230,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (actualFolder == mapping) finish()
+        if (actualFolder == mapping!!.first { f -> f.name == "Origin" }) finish()
         else goBack()
     }
 
@@ -248,13 +247,11 @@ class MainActivity : AppCompatActivity() {
 
             CoroutineScope(Dispatchers.Main + Job()).launch {
                 val deferred = async(Dispatchers.Default) {
-                    mapping = Klaxon().parse<Folder>(CryptoUtil.decrypt(cryptedMapping)!!.inputStream())
+                    mapping = Klaxon().parseArray(CryptoUtil.decrypt(cryptedMapping)!!.inputStream())
                 }
 
                 deferred.await()
-
-                setParent(mapping!!)
-                actualFolder = mapping!!
+                actualFolder = mapping!!.first { f -> f.name == "Origin" }
                 decryptFiles()
             }
         }
@@ -367,9 +364,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun createChips(originFolder : Folder) = CoroutineScope(Dispatchers.Main + Job()).launch {
         var index = 0
-        if (originFolder != mapping) {
+        if (originFolder != mapping!!.first { f -> f.name == "Origin" }) {
             val chip = Chip(chipgroup_folders.context)
-            chip.id = originFolder.folders.count()
+            val deferred = async(Dispatchers.Default) { chip.id = getFoldersList(actualFolder!!).count() }
+            deferred.await()
             chip.chipIcon = resources.getDrawable(R.drawable.ic_chevron_left_white_24dp, theme)
             chip.setChipBackgroundColorResource(R.color.colorAccent)
             chip.maxWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
@@ -388,7 +386,10 @@ class MainActivity : AppCompatActivity() {
             chip.startAnimation(fadeIn)
             index++
         }
-        for ((i, folder) in originFolder.folders.withIndex()) {
+        var foldersInOrigin = emptyList<Folder>()
+        val deferred = async(Dispatchers.Default) { foldersInOrigin = getFoldersList(originFolder) }
+        deferred.await()
+        for ((i, folder) in foldersInOrigin.withIndex()) {
             val chip = Chip(chipgroup_folders.context)
             chip.id = i
             chip.setChipBackgroundColorResource(R.color.colorHintAccent)
@@ -431,13 +432,6 @@ class MainActivity : AppCompatActivity() {
             && bar.visibility == View.VISIBLE && scrollView_chipgroup.visibility == View.VISIBLE) {
             bar.startAnimation(slideDown)
             scrollView_chipgroup.startAnimation(slideUp)
-        }
-    }
-
-    private fun setParent(parentFolder : Folder) {
-        for (folder in parentFolder.folders) {
-            folder.parent = parentFolder
-            setParent(folder)
         }
     }
 
@@ -484,8 +478,10 @@ class MainActivity : AppCompatActivity() {
         navigate(null)
     }
 
+    //TODO improve something is wrong here, blocking ui thread
     private fun navigate(direction : Boolean?) = CoroutineScope(Dispatchers.Main + Job()).launch {
         this@MainActivity.linearLayout_no_result.animate().alpha(0f).setDuration(125).withEndAction{
+            //TODO not disappearing in time ! :(
             this@MainActivity.linearLayout_no_result.visibility = View.INVISIBLE
             this@MainActivity.linearLayout_no_result.alpha = 1f
         }.start()
@@ -496,10 +492,11 @@ class MainActivity : AppCompatActivity() {
             .withStartAction{
                 this@MainActivity.progress_bar.visibility = View.VISIBLE
             }.withEndAction{
+                //TODO this stuff might be blocking the ui thread
                 chipgroup_folders.removeAllViews()
                 if (direction != null) {
                     actualFolder = if (direction) findFolder(clickedChip?.text)!!
-                    else actualFolder?.parent?.copy()
+                                   else findParent()!!
                 }
 
                 loadedFiles = 0
@@ -509,14 +506,39 @@ class MainActivity : AppCompatActivity() {
                     if (holder is ImageViewHolder) holder.recycleView()
                 }
                 decryptFiles()
-        }.start()
+            }
+        .start()
     }
 
-    private fun findFolder(text : CharSequence?) : Folder? {
-        for (folder in actualFolder?.folders!!)
+    //TODO improve async
+    private fun findFolder(text : CharSequence?): Folder? {
+        val list = getFoldersList(actualFolder!!)
+        for (folder in list)
             if (folder.name == text) return folder
 
         throw NotImplementedError("Error, did not find a folder with name : $text in ${actualFolder?.name}")
+    }
+
+    //TODO improve async
+    private fun findParent(): Folder? {
+        val parentPath = actualFolder!!.fullPath.removeSuffix("\\${actualFolder!!.name}")
+        for (folder in mapping!!)
+            if (folder.fullPath == parentPath) return folder
+
+        throw NotImplementedError("Error, did not find a parent for folder name : ${actualFolder!!.name}")
+    }
+
+    //TODO improve async
+    private fun getFoldersList(origin: Folder) : List<Folder> {
+        val result: MutableList<Folder> = arrayListOf()
+        val t = origin.fullPath.count { c -> c == '\\' }
+        for (folder in mapping!!) {
+            val a = folder.fullPath.count {c -> c == '\\' }
+            if (folder.fullPath.contains(origin.fullPath) && a == t + 1)
+                result.add(folder)
+        }
+
+        return result
     }
 
     private fun setAnimation() {
