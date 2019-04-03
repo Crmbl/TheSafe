@@ -35,10 +35,14 @@ import com.google.android.material.chip.Chip
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.*
 import android.content.Intent
+import android.graphics.Rect
+import android.util.DisplayMetrics
 import com.crmbl.thesafe.utils.VideoService
 import com.google.android.exoplayer2.util.Util
 
 
+//TODO add AudioService and audioItem to play sounds in background from the recyclerview, no fullscreen ofc
+//Will need to check every time there is if/else for video/picture ... BAD CODE :'( :'(
 @Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
@@ -231,7 +235,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onBackPressed() {
         if (actualFolder == mapping!!.first { f -> f.name == "Origin" }) finish()
-        else goBack()
+        else goBack(true)
     }
 
     //endregion override methods
@@ -259,44 +263,40 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun decryptFiles() = CoroutineScope(Dispatchers.Main + Job()).launch {
-        createChips(actualFolder!!)
-        val actualFolderFiltered = actualFolder?.files?.filter{f-> f.originName.toLowerCase().contains(query.toLowerCase())}
+        val actualFolderFiltered = actualFolder?.files?.filter{f-> f.originName.toLowerCase().contains(query.toLowerCase())}!!
+        val deferred = async(Dispatchers.Default) {
+            val displayMetrics = applicationContext.resources.displayMetrics
+            val fWidth = (displayMetrics.widthPixels - Math.round(12 * displayMetrics.density))
+            for ((i, file) in actualFolderFiltered.withIndex()) {
+                if (i == loadLimit) break
+                for (realFile in theSafeFolder.listFiles()) {
+                    if (file.updatedName == CryptoUtil.decipher(realFile.name.split('/').last())) {
+                        if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase())) file.type = "imageView"
+                        else file.type = "videoView"
 
-        val displayMetrics = applicationContext.resources.displayMetrics
-        val fWidth = (displayMetrics.widthPixels - Math.round(12 * displayMetrics.density))
-        for ((i, file) in actualFolderFiltered?.withIndex()!!) {
-            if (i == loadLimit) break
-            for (realFile in theSafeFolder.listFiles()) {
-                if (file.updatedName == CryptoUtil.decipher(realFile.name.split('/').last())) {
-                    if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase())) file.type = "imageView"
-                    else file.type = "videoView"
+                        file.path = realFile.path
+                        if (!file.frozen) {
+                            val ratio: Float = fWidth / file.width.toFloat()
+                            val fHeight = ratio * file.height.toFloat()
 
-                    file.path = realFile.path
-                    if (!file.frozen) {
-                        val ratio: Float = fWidth / file.width.toFloat()
-                        val fHeight = ratio * file.height.toFloat()
-
-                        file.height = Math.round(fHeight).toString()
-                        file.width = fWidth.toString()
-                        file.frozen = true
+                            file.height = Math.round(fHeight).toString()
+                            file.width = fWidth.toString()
+                            file.frozen = true
+                        }
+                        loadedFiles++
                     }
-                    loadedFiles++
                 }
             }
-        }
 
-        if (this@MainActivity.progress_bar.visibility != View.GONE) {
-            this@MainActivity.progress_bar.animate().alpha(0f).setDuration(125).withEndAction{
-                this@MainActivity.progress_bar.visibility = View.GONE
-                if (recyclerview_main.visibility != View.VISIBLE) recyclerview_main.visibility = View.VISIBLE
-            }.start()
-        }
+            createChips(actualFolder!!)
 
-        if (actualFolderFiltered.count() == 0) files = actualFolderFiltered.toMutableList()
-        else { files = actualFolderFiltered.take(loadedFiles).toMutableList()
-            files?.add(0, File(type="header"))
-            if (loadedFiles != actualFolderFiltered.count()) files?.add(File(type="footer"))
+            if (actualFolderFiltered.count() == 0) files = actualFolderFiltered.toMutableList()
+            else { files = actualFolderFiltered.take(loadedFiles).toMutableList()
+                files?.add(0, File(type="header"))
+                if (loadedFiles != actualFolderFiltered.count()) files?.add(File(type="footer"))
+            }
         }
+        deferred.await()
 
         adapter = ItemAdapter(files!!, videoListener!!, imageListener!!, scrollUpListener!!)
         recyclerview_main.adapter = adapter
@@ -307,12 +307,20 @@ class MainActivity : AppCompatActivity() {
             adapter?.notifyDataSetChanged()
         }
 
-        showUi()
-        if (actualFolderFiltered.count() == 0) {
-            this@MainActivity.linearLayout_no_result.alpha = 0f
-            this@MainActivity.linearLayout_no_result.visibility = View.VISIBLE
-            this@MainActivity.linearLayout_no_result.animate().alpha(1f).setDuration(125).withEndAction{
-                this@MainActivity.linearLayout_no_result.alpha = 1f }.start()
+        if (this@MainActivity.progress_bar.visibility != View.GONE) {
+            this@MainActivity.progress_bar.animate().alpha(0f).setDuration(125).withEndAction{
+                this@MainActivity.progress_bar.visibility = View.GONE
+                if (recyclerview_main.visibility != View.VISIBLE) recyclerview_main.visibility = View.VISIBLE
+
+                if (actualFolderFiltered.count() == 0) {
+                    this@MainActivity.linearLayout_no_result.alpha = 0f
+                    this@MainActivity.linearLayout_no_result.visibility = View.VISIBLE
+                    this@MainActivity.linearLayout_no_result.animate().alpha(1f).setDuration(125).withEndAction{
+                        this@MainActivity.linearLayout_no_result.alpha = 1f
+                        showUi()
+                    }.start()
+                }
+            }.start()
         }
     }
 
@@ -438,39 +446,70 @@ class MainActivity : AppCompatActivity() {
     private fun goForward(_clickedChip : Chip) {
         clickedChip = _clickedChip
 
+        var visibleCount = 0
         for (i in 0..chipgroup_folders.childCount) {
             val chip : Chip = chipgroup_folders.findViewById(i) ?: return
-            val fadeOut = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_out)
+            if (!isVisible(chip)) continue
+            visibleCount++
 
+            val fadeOut = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_out)
             fadeOut.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view: View? ->
                 view?.visibility = View.INVISIBLE
-                if (view as Chip == lastChip) navigate(true)
+                if (view as Chip == lastChip) {
+                    lastChip = null
+                    navigate(true)
+                }
             }))
-            chip.postDelayed({ chip.startAnimation(fadeOut) }, i * 50L)
+            chip.postDelayed({ chip.startAnimation(fadeOut) }, visibleCount * 50L)
 
             if (i == chipgroup_folders.childCount -1)
                 lastChip = chip
         }
     }
 
-    private fun goBack() {
+    private fun goBack(isBackPressed: Boolean = false) {
         if (scrollView_chipgroup.visibility != View.VISIBLE)
             navigate(false)
         else {
+            var visibleCount = 0
             for (i in 0..chipgroup_folders.childCount) {
                 val chip : Chip = chipgroup_folders.findViewById(i) ?: return
-                val fadeOut = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_out)
+                if (!isVisible(chip)) continue
+                visibleCount++
 
+                val fadeOut = AnimationUtils.loadAnimation(applicationContext, R.anim.fade_out)
                 fadeOut.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view: View? ->
                     view?.visibility = View.INVISIBLE
-                    if (view as Chip == lastChip) navigate(false)
+                    if (view as Chip == lastChip) {
+                        lastChip = null
+                        navigate(false)
+                    }
                 }))
-                chip.postDelayed({ chip.startAnimation(fadeOut) }, i * 50L)
+                chip.postDelayed({ chip.startAnimation(fadeOut) }, visibleCount * 50L)
 
                 if (i == chipgroup_folders.childCount -1)
                     lastChip = chip
+
+                if (lastChip == null && isBackPressed && !isVisible(chipgroup_folders.findViewById(i+1)))
+                    lastChip = chip
             }
         }
+    }
+
+    private fun isVisible(view: View): Boolean {
+        if (!view.isShown) return false
+
+        val actualPosition = Rect()
+        view.getGlobalVisibleRect(actualPosition)
+
+        val displayMetrics = DisplayMetrics()
+        windowManager.defaultDisplay.getMetrics(displayMetrics)
+
+        val width = displayMetrics.widthPixels
+        val height = displayMetrics.heightPixels
+
+        val screen = Rect(0, 0, width, height)
+        return actualPosition.intersect(screen)
     }
 
     private fun searchQuery(query: String?) {
@@ -478,21 +517,19 @@ class MainActivity : AppCompatActivity() {
         navigate(null)
     }
 
-    //TODO improve something is wrong here, blocking ui thread
     private fun navigate(direction : Boolean?) = CoroutineScope(Dispatchers.Main + Job()).launch {
         this@MainActivity.linearLayout_no_result.animate().alpha(0f).setDuration(125).withEndAction{
-            //TODO not disappearing in time ! :(
             this@MainActivity.linearLayout_no_result.visibility = View.INVISIBLE
             this@MainActivity.linearLayout_no_result.alpha = 1f
         }.start()
         recyclerview_main.animate().alpha(0f).setDuration(125).withEndAction{
             recyclerview_main.visibility = View.INVISIBLE; recyclerview_main.alpha = 1f
         }.start()
+
         this@MainActivity.progress_bar.animate().alpha(1f).setDuration(125)
             .withStartAction{
                 this@MainActivity.progress_bar.visibility = View.VISIBLE
             }.withEndAction{
-                //TODO this stuff might be blocking the ui thread
                 chipgroup_folders.removeAllViews()
                 if (direction != null) {
                     actualFolder = if (direction) findFolder(clickedChip?.text)!!
@@ -510,7 +547,6 @@ class MainActivity : AppCompatActivity() {
         .start()
     }
 
-    //TODO improve async
     private fun findFolder(text : CharSequence?): Folder? {
         val list = getFoldersList(actualFolder!!)
         for (folder in list)
@@ -519,7 +555,6 @@ class MainActivity : AppCompatActivity() {
         throw NotImplementedError("Error, did not find a folder with name : $text in ${actualFolder?.name}")
     }
 
-    //TODO improve async
     private fun findParent(): Folder? {
         val parentPath = actualFolder!!.fullPath.removeSuffix("\\${actualFolder!!.name}")
         for (folder in mapping!!)
@@ -528,7 +563,6 @@ class MainActivity : AppCompatActivity() {
         throw NotImplementedError("Error, did not find a parent for folder name : ${actualFolder!!.name}")
     }
 
-    //TODO improve async
     private fun getFoldersList(origin: Folder) : List<Folder> {
         val result: MutableList<Folder> = arrayListOf()
         val t = origin.fullPath.count { c -> c == '\\' }
