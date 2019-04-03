@@ -325,38 +325,43 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateListView() = CoroutineScope(Dispatchers.Main + Job()).launch {
-        val actualFolderFiltered = actualFolder?.files?.filter{f-> f.originName.toLowerCase().contains(query.toLowerCase())}
-        if (loadedFiles != actualFolderFiltered?.count()) {
+        val actualFolderFiltered = actualFolder?.files?.filter{f-> f.originName.toLowerCase().contains(query.toLowerCase())}!!
+        if (loadedFiles != actualFolderFiltered.count()) {
             val displayMetrics = applicationContext.resources.displayMetrics
             val fWidth = (displayMetrics.widthPixels - Math.round(12 * displayMetrics.density))
-            for ((i, file) in actualFolderFiltered?.drop(loadedFiles)?.withIndex()!!) {
-                if (i == loadLimit) break
-                for (realFile in theSafeFolder.listFiles()) {
-                    if (file.updatedName == CryptoUtil.decipher(realFile.name.split('/').last())) {
-                        if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase())) file.type = "imageView"
-                        else file.type = "videoView"
 
-                        file.path = realFile.path
-                        if (!file.frozen) {
-                            val ratio: Float = fWidth / file.width.toFloat()
-                            val fHeight = ratio * file.height.toFloat()
+            val deferred = async(Dispatchers.Default) {
+                for ((i, file) in actualFolderFiltered.drop(loadedFiles).withIndex()) {
+                    if (i == loadLimit) break
+                    for (realFile in theSafeFolder.listFiles()) {
+                        if (file.updatedName == CryptoUtil.decipher(realFile.name.split('/').last())) {
+                            if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase())) file.type = "imageView"
+                            else file.type = "videoView"
 
-                            file.height = Math.round(fHeight).toString()
-                            file.width = fWidth.toString()
-                            file.frozen = true
+                            file.path = realFile.path
+                            if (!file.frozen) {
+                                val ratio: Float = fWidth / file.width.toFloat()
+                                val fHeight = ratio * file.height.toFloat()
+
+                                file.height = Math.round(fHeight).toString()
+                                file.width = fWidth.toString()
+                                file.frozen = true
+                            }
+                            loadedFiles++
+
+                            if (files!!.size != 0 && files!!.last().type == "footer") {
+                                files!!.removeAt(files!!.lastIndex)
+                                runOnUiThread { adapter?.notifyItemRemoved(loadedFiles) }
+                            }
+
+                            files!!.add(file)
+                            runOnUiThread { adapter?.notifyItemInserted(loadedFiles) }
                         }
-
-                        loadedFiles++
-                        if (files!!.size != 0 && files!!.last().type == "footer") {
-                            files!!.removeAt(files!!.lastIndex)
-                            adapter?.notifyItemRemoved(loadedFiles)
-                        }
-
-                        files!!.add(file)
-                        adapter?.notifyItemInserted(loadedFiles)
                     }
                 }
             }
+            deferred.await()
+
             if (loadedFiles != actualFolderFiltered.count())
                 files!!.add(File(type="footer"))
             else if (loadedFiles == actualFolderFiltered.count()
@@ -463,6 +468,9 @@ class MainActivity : AppCompatActivity() {
             chip.postDelayed({ chip.startAnimation(fadeOut) }, visibleCount * 50L)
 
             if (i == chipgroup_folders.childCount -1)
+                lastChip = chip
+
+            if (lastChip == null && !isVisible(chipgroup_folders.findViewById(i+1)))
                 lastChip = chip
         }
     }

@@ -51,6 +51,7 @@
 
             <ImageButton android:id="@id/controller_play"
                          android:visibility="gone"
+                         android:contentDescription="@string/play_button"
                          android:layout_width="70dp"
                          android:layout_height="70dp"
                          android:layout_gravity="center"
@@ -59,6 +60,7 @@
                          style="@style/ExoMediaButton.Play"/>
 
             <ImageButton android:id="@id/controller_pause"
+                         android:contentDescription="@string/pause_button"
                          android:layout_width="70dp"
                          android:layout_height="70dp"
                          android:layout_gravity="center"
@@ -90,6 +92,7 @@
 
             <ImageButton
                     android:id="@+id/controller_fullscreen"
+                    android:contentDescription="@string/desc_fullscreen_button"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
@@ -129,6 +132,9 @@
                   android:layout_width="0dp"
                   android:layout_weight="1"
                   android:textColor="@color/colorHintAccent"
+                  android:ellipsize="end"
+                  android:maxEms="8"
+                  android:maxLines="1"
                   android:gravity="center_vertical"
                   android:textSize="12sp"/>
 

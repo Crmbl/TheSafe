@@ -37,4 +37,5 @@
     <string name="mute_button">mute button</string>
     <string name="playback_name">Audio</string>
     <string name="the_safe">T h e S a f e</string>
+    <string name="desc_fullscreen_button">fullscreen button</string>
 </resources>
