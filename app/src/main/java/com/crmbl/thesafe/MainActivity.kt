@@ -39,6 +39,8 @@ import android.graphics.Rect
 import android.util.DisplayMetrics
 import com.crmbl.thesafe.utils.VideoService
 import com.google.android.exoplayer2.util.Util
+import java.io.InputStream
+import kotlin.system.measureTimeMillis
 
 
 //TODO add AudioService and audioItem to play sounds in background from the recyclerview, no fullscreen ofc
@@ -251,7 +253,12 @@ class MainActivity : AppCompatActivity() {
 
             CoroutineScope(Dispatchers.Main + Job()).launch {
                 val deferred = async(Dispatchers.Default) {
-                    mapping = Klaxon().parseArray(CryptoUtil.decrypt(cryptedMapping)!!.inputStream())
+                    //mapping = Klaxon().parseArray(CryptoUtil.decrypt(cryptedMapping)!!.inputStream())
+                    var inputStream: InputStream? = null
+                    val decryptTime = measureTimeMillis { inputStream = CryptoUtil.decrypt(cryptedMapping)!!.inputStream() }
+                    val parseTime = measureTimeMillis { mapping = Klaxon().parseArray(inputStream!!) }
+                    android.util.Log.d("TEST", "Decrypt: ${decryptTime}ms || Parsing: ${parseTime}ms")
+                    //Output : [Decrypt: 585ms || Parsing: 21736ms] TODO must improve parsing, way too long
                 }
 
                 deferred.await()
