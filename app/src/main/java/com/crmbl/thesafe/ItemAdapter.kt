@@ -13,14 +13,16 @@ class ItemAdapter(
     private val dataSource : MutableList<File>,
     private val videoListener: VideoViewHolder.VideoViewHolderListener,
     private val imageListener: ImageViewHolder.ImageViewHolderListener,
+    private val soundListener: SoundViewHolder.SoundViewHolderListener,
     private val scrollUpListener: ScrollUpViewHolder.ScrollUpViewHolderListener
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val headerView = 0
     private val imageView = 1
     private val videoView = 2
-    private val footerView = 3
-    private val scrollUpView = 4
+    private val soundView = 3
+    private val footerView = 4
+    private val scrollUpView = 5
     private var lastPosition = -1
 
     //region override methods
@@ -42,6 +44,12 @@ class ItemAdapter(
                     .apply { clipToOutline = true }
 
                 return VideoViewHolder(view, videoListener)
+            }
+            soundView -> {
+                val view: View = LayoutInflater.from(parent.context).inflate(R.layout.sound_item, parent, false)
+                    .apply { clipToOutline = true }
+
+                return SoundViewHolder(view, soundListener)
             }
             footerView -> {
                 val view: View = LayoutInflater.from(parent.context).inflate(R.layout.footer_item, parent, false)
@@ -67,6 +75,8 @@ class ItemAdapter(
             return imageView
         if (dataSource[position].type == "videoView")
             return videoView
+        if (dataSource[position].type == "soundView")
+            return soundView
 
         throw Exception("Did not find a suitable view for the item/position")
     }
@@ -84,6 +94,11 @@ class ItemAdapter(
             }
             is VideoViewHolder -> {
                 val file : File = dataSource[position]
+                holder.bind(file)
+                setAnimation(holder.itemView, position)
+            }
+            is SoundViewHolder -> {
+                val file: File = dataSource[position]
                 holder.bind(file)
                 setAnimation(holder.itemView, position)
             }
@@ -112,6 +127,8 @@ class ItemAdapter(
             holder.clearAnimation()
         if (holder is VideoViewHolder)
             holder.clearAnimation()
+        if (holder is SoundViewHolder)
+            holder.clearAnimation()
 
         super.onViewDetachedFromWindow(holder)
     }
@@ -122,6 +139,8 @@ class ItemAdapter(
         if (holder is ImageViewHolder)
             holder.recycleView()
         if (holder is ScrollUpViewHolder)
+            holder.recycleView()
+        if (holder is SoundViewHolder)
             holder.recycleView()
 
         super.onViewRecycled(holder)

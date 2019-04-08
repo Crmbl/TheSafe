@@ -19,7 +19,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.MotionEventCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.beust.klaxon.Klaxon
 import com.crmbl.thesafe.listeners.ComposableAnimationListener
 import com.crmbl.thesafe.listeners.ComposableTransitionListener
 import com.crmbl.thesafe.utils.CryptoUtil
@@ -28,6 +27,7 @@ import com.crmbl.thesafe.viewHolders.ImageViewHolder.ImageViewHolderListener
 import com.crmbl.thesafe.viewHolders.ScrollUpViewHolder
 import com.crmbl.thesafe.viewHolders.VideoViewHolder
 import com.crmbl.thesafe.viewHolders.VideoViewHolder.VideoViewHolderListener
+import com.crmbl.thesafe.viewHolders.SoundViewHolder.SoundViewHolderListener
 import com.crmbl.thesafe.utils.VideoService.VideoServiceListener
 import com.crmbl.thesafe.viewHolders.ScrollUpViewHolder.ScrollUpViewHolderListener
 import com.github.ybq.android.spinkit.style.CubeGrid
@@ -39,12 +39,11 @@ import android.graphics.Rect
 import android.util.DisplayMetrics
 import com.crmbl.thesafe.utils.VideoService
 import com.google.android.exoplayer2.util.Util
-import java.io.InputStream
-import kotlin.system.measureTimeMillis
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import java.io.InputStreamReader
 
 
-//TODO add AudioService and audioItem to play sounds in background from the recyclerview, no fullscreen ofc
-//Will need to check every time there is if/else for video/picture ... BAD CODE :'( :'(
 @Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
@@ -64,11 +63,13 @@ class MainActivity : AppCompatActivity() {
     private var notificationItem: File? = null
     private var query: String = ""
     private var imageFileExtensions: Array<String> = arrayOf("gif", "png", "jpg", "jpeg", "bmp", "pdf")
+    private var videoFileExtensions: Array<String> = arrayOf("webm", "mkv", "ogg", "ogv", "avi", "wmv", "mp4", "mpg", "mpeg", "m2v", "m4v", "3gp", "flv")
     private lateinit var cryptedMapping : java.io.File
     private lateinit var theSafeFolder : java.io.File
 
     private var broadcastReceiver: BroadcastReceiver? = null
     private var videoListener: VideoViewHolderListener? = null
+    private var soundListener: SoundViewHolderListener? = null
     private var imageListener: ImageViewHolderListener? = null
     private var videoServiceListener: VideoServiceListener? = null
     private var scrollUpListener: ScrollUpViewHolderListener? = null
@@ -167,6 +168,9 @@ class MainActivity : AppCompatActivity() {
         imageListener = object: ImageViewHolderListener {
             override fun onDoubleTap(view: View, item: File) { showPopup(view, item) }
         }
+        soundListener = object: SoundViewHolderListener {
+            override fun onDoubleTap(view: View, item: File) { runInForeground(item) }
+        }
         scrollUpListener = object: ScrollUpViewHolder.ScrollUpViewHolderListener {
             override fun onClick() {
                 recyclerview_main.layoutManager!!.scrollToPosition(0)
@@ -253,12 +257,8 @@ class MainActivity : AppCompatActivity() {
 
             CoroutineScope(Dispatchers.Main + Job()).launch {
                 val deferred = async(Dispatchers.Default) {
-                    //mapping = Klaxon().parseArray(CryptoUtil.decrypt(cryptedMapping)!!.inputStream())
-                    var inputStream: InputStream? = null
-                    val decryptTime = measureTimeMillis { inputStream = CryptoUtil.decrypt(cryptedMapping)!!.inputStream() }
-                    val parseTime = measureTimeMillis { mapping = Klaxon().parseArray(inputStream!!) }
-                    android.util.Log.d("TEST", "Decrypt: ${decryptTime}ms || Parsing: ${parseTime}ms")
-                    //Output : [Decrypt: 585ms || Parsing: 21736ms] TODO must improve parsing, way too long
+                    val reader = InputStreamReader(CryptoUtil.decrypt(cryptedMapping)!!.inputStream(), "UTF-8")
+                    mapping = Gson().fromJson(reader, object : TypeToken<List<Folder>>() {}.type)
                 }
 
                 deferred.await()
@@ -278,8 +278,11 @@ class MainActivity : AppCompatActivity() {
                 if (i == loadLimit) break
                 for (realFile in theSafeFolder.listFiles()) {
                     if (file.updatedName == CryptoUtil.decipher(realFile.name.split('/').last())) {
-                        if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase())) file.type = "imageView"
-                        else file.type = "videoView"
+                        when {
+                            imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase()) -> file.type = "imageView"
+                            videoFileExtensions.contains(file.updatedName.split('.').last().toLowerCase()) -> file.type = "videoView"
+                            else -> file.type = "soundView"
+                        }
 
                         file.path = realFile.path
                         if (!file.frozen) {
@@ -305,7 +308,7 @@ class MainActivity : AppCompatActivity() {
         }
         deferred.await()
 
-        adapter = ItemAdapter(files!!, videoListener!!, imageListener!!, scrollUpListener!!)
+        adapter = ItemAdapter(files!!, videoListener!!, imageListener!!, soundListener!!, scrollUpListener!!)
         recyclerview_main.adapter = adapter
 
         val filesHeight = files!!.sumBy { f -> if (f.height.isNotEmpty()) f.height.toInt() else 0 }
@@ -342,8 +345,11 @@ class MainActivity : AppCompatActivity() {
                     if (i == loadLimit) break
                     for (realFile in theSafeFolder.listFiles()) {
                         if (file.updatedName == CryptoUtil.decipher(realFile.name.split('/').last())) {
-                            if (imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase())) file.type = "imageView"
-                            else file.type = "videoView"
+                            when {
+                                imageFileExtensions.contains(file.updatedName.split('.').last().toLowerCase()) -> file.type = "imageView"
+                                videoFileExtensions.contains(file.updatedName.split('.').last().toLowerCase()) -> file.type = "videoView"
+                                else -> file.type = "soundView"
+                            }
 
                             file.path = realFile.path
                             if (!file.frozen) {

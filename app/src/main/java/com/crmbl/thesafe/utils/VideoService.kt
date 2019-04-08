@@ -74,6 +74,7 @@ class VideoService: Service() {
         val mediaSource = ExtractorMediaSource.Factory(factory).createMediaSource(mediaByteUri)
 
         player!!.prepare(mediaSource)
+        player!!.repeatMode = Player.REPEAT_MODE_ALL
         player!!.playWhenReady = true
 
         playerNotificationManager = PlayerNotificationManager.createWithNotificationChannel(
