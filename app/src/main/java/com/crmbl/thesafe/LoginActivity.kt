@@ -133,7 +133,7 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
         catch (e: NoSuchAlgorithmException) { throw RuntimeException("Failed to get an instance of KeyGenerator", e) }
         catch (e: NoSuchProviderException) { throw RuntimeException("Failed to get an instance of KeyGenerator", e) }
 
-        createKey(this.keyName)
+        createKey()
 
         val defaultCipher: Cipher
         try { defaultCipher = Cipher.getInstance(KeyProperties.KEY_ALGORITHM_AES + "/"
@@ -142,7 +142,7 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
         catch (e: NoSuchAlgorithmException) { throw RuntimeException("Failed to get an instance of Cipher", e) }
         catch (e: NoSuchPaddingException) { throw RuntimeException("Failed to get an instance of Cipher", e) }
 
-        if (initCipher(defaultCipher, this.keyName))
+        if (initCipher(defaultCipher))
             cryptoObject = FingerprintManagerCompat.CryptoObject(defaultCipher)
 
         //endregion
@@ -250,10 +250,10 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
         cryptoObject?.let { controller?.startListening(it) }
     }
 
-    private fun initCipher(cipher: Cipher, keyName: String): Boolean {
+    private fun initCipher(cipher: Cipher): Boolean {
         return try {
             keyStore?.load(null)
-            val key = keyStore?.getKey(keyName, null) as SecretKey
+            val key = keyStore?.getKey(this.keyName, null) as SecretKey
             cipher.init(Cipher.ENCRYPT_MODE, key)
             true
         }
@@ -266,10 +266,10 @@ class LoginActivity : AppCompatActivity(), FingerprintController.Callback {
         catch (e: InvalidKeyException) { throw RuntimeException("Failed to init Cipher", e) }
     }
 
-    private fun createKey(keyName: String) {
+    private fun createKey() {
         try {
             keyStore?.load(null)
-            val builder = KeyGenParameterSpec.Builder(keyName, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+            val builder = KeyGenParameterSpec.Builder(this.keyName, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
                 .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
                 .setUserAuthenticationRequired(true)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)

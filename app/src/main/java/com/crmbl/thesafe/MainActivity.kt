@@ -24,7 +24,6 @@ import com.crmbl.thesafe.listeners.ComposableTransitionListener
 import com.crmbl.thesafe.utils.CryptoUtil
 import com.crmbl.thesafe.viewHolders.ImageViewHolder
 import com.crmbl.thesafe.viewHolders.ImageViewHolder.ImageViewHolderListener
-import com.crmbl.thesafe.viewHolders.ScrollUpViewHolder
 import com.crmbl.thesafe.viewHolders.VideoViewHolder
 import com.crmbl.thesafe.viewHolders.VideoViewHolder.VideoViewHolderListener
 import com.crmbl.thesafe.viewHolders.SoundViewHolder.SoundViewHolderListener
@@ -56,6 +55,8 @@ class MainActivity : AppCompatActivity() {
     private var mapping : List<Folder>? = null
     private var clickedChip : Chip? = null
     private var actualFolder : Folder? = null
+    private var previousFolder : Folder? = null
+    private var previousChip : Chip? = null
     private var files : MutableList<File>? = null
     private var lastChip : Chip? = null
     private var adapter : ItemAdapter? = null
@@ -138,8 +139,7 @@ class MainActivity : AppCompatActivity() {
 
             @Suppress("DEPRECATION")
             override fun onTouch(v: View?, event: MotionEvent?): Boolean {
-                val action : Int = MotionEventCompat.getActionMasked(event)
-                when (action) {
+                when (MotionEventCompat.getActionMasked(event)) {
                     MotionEvent.ACTION_DOWN -> initialY = event?.y!!
                     MotionEvent.ACTION_UP -> {
                         if (initialY < event?.y!!) {
@@ -171,13 +171,13 @@ class MainActivity : AppCompatActivity() {
         soundListener = object: SoundViewHolderListener {
             override fun onDoubleTap(view: View, item: File) { runInForeground(item) }
         }
-        scrollUpListener = object: ScrollUpViewHolder.ScrollUpViewHolderListener {
+        scrollUpListener = object: ScrollUpViewHolderListener {
             override fun onClick() {
                 recyclerview_main.layoutManager!!.scrollToPosition(0)
                 recyclerview_main.tag = "smoothScrolling"
             }
         }
-        videoServiceListener = object: VideoService.VideoServiceListener {
+        videoServiceListener = object: VideoServiceListener {
             override fun onServiceDestroyed() {
                 if (notificationItem != null) {
                     runInForeground(notificationItem!!)
@@ -330,7 +330,20 @@ class MainActivity : AppCompatActivity() {
                         showUi()
                     }.start()
                 }
+
+                scrollUntilPreviousFolder()
             }.start()
+        }
+    }
+
+    private fun scrollUntilPreviousFolder() = CoroutineScope(Dispatchers.Main + Job()).launch {
+        if (previousChip != null) {
+            if (!isVisible(previousChip!!)) {
+                val pos = intArrayOf(0, 0)
+                previousChip!!.getLocationOnScreen(pos)
+                scrollView_chipgroup.scrollTo(pos.first(), 0)
+            }
+            previousChip = null
         }
     }
 
@@ -432,6 +445,11 @@ class MainActivity : AppCompatActivity() {
             fadeIn.setAnimationListener(ComposableAnimationListener(_view = chip, onEnd = { _: Animation?, view:View? -> view?.alpha = 1f }))
             chip.postDelayed({ chip.startAnimation(fadeIn) }, index * 50L)
             index++
+
+            if (previousFolder != null && folder.name == previousFolder!!.name && folder.fullPath == previousFolder!!.fullPath) {
+                previousFolder = null
+                previousChip = chipgroup_folders.findViewById(chip.id)
+            }
         }
     }
 
@@ -525,11 +543,10 @@ class MainActivity : AppCompatActivity() {
 
         val displayMetrics = DisplayMetrics()
         windowManager.defaultDisplay.getMetrics(displayMetrics)
-
         val width = displayMetrics.widthPixels
         val height = displayMetrics.heightPixels
-
         val screen = Rect(0, 0, width, height)
+
         return actualPosition.intersect(screen)
     }
 
@@ -553,6 +570,7 @@ class MainActivity : AppCompatActivity() {
             }.withEndAction{
                 chipgroup_folders.removeAllViews()
                 if (direction != null) {
+                    if (!direction) previousFolder = actualFolder
                     actualFolder = if (direction) findFolder(clickedChip?.text)!!
                                    else findParent()!!
                 }
