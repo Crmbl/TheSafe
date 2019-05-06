@@ -286,8 +286,15 @@ class MainActivity : AppCompatActivity() {
 
                         file.path = realFile.path
                         if (!file.frozen) {
-                            val ratio: Float = fWidth / file.width.toFloat()
-                            val fHeight = ratio * file.height.toFloat()
+                            var notNullWidth = 1f
+                            if (file.width != null)
+                                notNullWidth = file.width.toFloat()
+                            val ratio: Float = fWidth / notNullWidth
+
+                            var notNullHeight = 1f
+                            if (file.height != null)
+                                notNullHeight = file.height.toFloat()
+                            val fHeight = ratio * notNullHeight
 
                             file.height = Math.round(fHeight).toString()
                             file.width = fWidth.toString()
